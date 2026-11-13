@@ -6,10 +6,11 @@ tasks_routes.py
 """
 
 import json
-from typing import Any
-
-from pathlib import Path
 import sqlite3
+
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -51,12 +52,22 @@ SUBJECTS = [
 # ПОДКЛЮЧЕНИЕ К БАЗЕ
 # --------------------------------------------------
 
+@contextmanager
 def get_tasks_connection():
-    """Создаёт подключение к базе данных."""
+    """Создаёт подключение с гарантированным закрытием."""
 
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
-    return conn
+    conn.execute("PRAGMA foreign_keys = ON")
+
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # --------------------------------------------------
