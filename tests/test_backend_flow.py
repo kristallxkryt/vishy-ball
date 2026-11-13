@@ -1,13 +1,18 @@
 from pathlib import Path
 import sqlite3
+import sys
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from main import app
 
 
-DB_PATH = Path(__file__).resolve().parents[1] / "users.db"
+DB_PATH = PROJECT_ROOT / "users.db"
 
 
 def register_and_login(client: TestClient, role: str):
