@@ -38,6 +38,14 @@ jobs:
           python - <<'PY'
           from main import app
           from checking_routes import grade_assignment_attempt
+          from auth_routes import router as auth_router
+          from classes_routes import router as classes_router
+          from variants_routes import router as variants_router
+
+          print("Auth router routes:", len(auth_router.routes), [getattr(route, "path", None) for route in auth_router.routes])
+          print("Classes router routes:", len(classes_router.routes), [getattr(route, "path", None) for route in classes_router.routes])
+          print("Variants router routes:", len(variants_router.routes), [getattr(route, "path", None) for route in variants_router.routes])
+          print("App route objects:", [(type(route).__name__, getattr(route, "path", None)) for route in app.routes])
 
           required_paths = {
               "/api/auth/register",
