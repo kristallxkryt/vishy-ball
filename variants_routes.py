@@ -1247,10 +1247,20 @@ def get_assignments(
             conditions = [
                 "cm.student_id = ?",
                 "cm.status = 'active'",
-                "a.status = 'active'"
+                """(
+                    a.status = 'active'
+                    OR EXISTS (
+                        SELECT 1
+                        FROM assignment_attempts existing_attempt
+                        WHERE existing_attempt.assignment_id = a.id
+                          AND existing_attempt.student_id = ?
+                    )
+                )"""
             ]
 
-            params = [user_id]
+            # Закрытые назначения остаются видны ученику,
+            # если у него уже есть попытка по этой работе.
+            params = [user_id, user_id]
 
             if class_id is not None:
                 conditions.append("a.class_id = ?")
