@@ -32,3 +32,10 @@ htmlcov/
 
 # Runtime logs
 *.log
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
