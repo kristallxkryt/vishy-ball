@@ -1047,9 +1047,7 @@ def finalize_assignment_attempt(
         FROM task_attempts
         WHERE assignment_attempt_id = ?
           AND status = 'pending_review'
-    """, (
-        assignment_attempt_id
-    )).fetchone()["total"]
+    """, (assignment_attempt_id,)).fetchone()["total"]
 
     if pending == 0:
         reviewed = conn.execute("""
@@ -1057,9 +1055,7 @@ def finalize_assignment_attempt(
             FROM task_attempts
             WHERE assignment_attempt_id = ?
               AND status = 'reviewed'
-        """, (
-            assignment_attempt_id
-        )).fetchone()["total"]
+        """, (assignment_attempt_id,)).fetchone()["total"]
 
         if reviewed > 0:
             conn.execute("""
@@ -1067,9 +1063,7 @@ def finalize_assignment_attempt(
                 SET status = 'reviewed'
                 WHERE id = ?
                   AND status = 'submitted'
-            """, (
-                assignment_attempt_id
-            ))
+            """, (assignment_attempt_id,))
 
 
 def process_assignment_submission(
@@ -1153,9 +1147,7 @@ def process_assignment_submission(
         SELECT COUNT(*) AS total
         FROM task_attempts
         WHERE assignment_attempt_id = ?
-    """, (
-        assignment_attempt_id
-    )).fetchone()["total"]
+    """, (assignment_attempt_id,)).fetchone()["total"]
 
     if existing:
         raise HTTPException(
@@ -1368,9 +1360,7 @@ def submit_assignment_for_checking(
             SELECT status
             FROM assignment_attempts
             WHERE id = ?
-        """, (
-            assignment_attempt_id
-        )).fetchone()["status"]
+        """, (assignment_attempt_id,)).fetchone()["status"]
 
     return {
         "message": "Работа отправлена на проверку.",
@@ -1411,9 +1401,7 @@ def ensure_review_access(
             ON a.id = aa.assignment_id
 
         WHERE ta.id = ?
-    """, (
-        attempt_id
-    )).fetchone()
+    """, (attempt_id,)).fetchone()
 
     if attempt is None:
         raise HTTPException(
@@ -1597,9 +1585,7 @@ def get_review_details(
                 ON c.id = ca.class_id
 
             WHERE a.id = ?
-        """, (
-            attempt_id
-        )).fetchone()
+        """, (attempt_id,)).fetchone()
 
     if row is None:
         raise HTTPException(
@@ -1639,9 +1625,7 @@ def grade_attempt(
         SELECT *
         FROM task_attempts
         WHERE id = ?
-    """, (
-        attempt_id
-    )).fetchone()
+    """, (attempt_id,)).fetchone()
 
     if attempt is None:
         raise HTTPException(
@@ -1663,9 +1647,7 @@ def grade_attempt(
             checking_config_json
         FROM tasks
         WHERE id = ?
-    """, (
-        attempt["task_id"]
-    )).fetchone()
+    """, (attempt["task_id"],)).fetchone()
 
     if task is None:
         raise HTTPException(
@@ -1922,9 +1904,7 @@ def get_teacher_assignment_results(
                 status
             FROM class_assignments
             WHERE id = ?
-        """, (
-            assignment_id
-        )).fetchone()
+        """, (assignment_id,)).fetchone()
 
         if assignment is None:
             raise HTTPException(
@@ -2034,27 +2014,21 @@ def get_teacher_assignment_results(
             FROM assignment_attempts
             WHERE assignment_id = ?
               AND status IN ('submitted', 'reviewed')
-        """, (
-            assignment_id
-        )).fetchone()["total"]
+        """, (assignment_id,)).fetchone()["total"]
 
         in_progress_count = conn.execute("""
             SELECT COUNT(*) AS total
             FROM assignment_attempts
             WHERE assignment_id = ?
               AND status = 'in_progress'
-        """, (
-            assignment_id
-        )).fetchone()["total"]
+        """, (assignment_id,)).fetchone()["total"]
 
         reviewed_count = conn.execute("""
             SELECT COUNT(*) AS total
             FROM assignment_attempts
             WHERE assignment_id = ?
               AND status = 'reviewed'
-        """, (
-            assignment_id
-        )).fetchone()["total"]
+        """, (assignment_id,)).fetchone()["total"]
 
     return {
         "assignment_id": assignment_id,
@@ -2094,9 +2068,7 @@ def get_student_assignment_answers(
             SELECT id, teacher_id
             FROM class_assignments
             WHERE id = ?
-        """, (
-            assignment_id
-        )).fetchone()
+        """, (assignment_id,)).fetchone()
 
         if assignment is None:
             raise HTTPException(
@@ -2151,9 +2123,7 @@ def get_student_assignment_answers(
             WHERE ta.assignment_attempt_id = ?
 
             ORDER BY ta.id
-        """, (
-            attempt["id"]
-        )).fetchall()
+        """, (attempt["id"],)).fetchall()
 
     return {
         "assignment_id": assignment_id,
