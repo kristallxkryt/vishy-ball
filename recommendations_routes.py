@@ -80,17 +80,29 @@ def get_recommendations(
                 t2.subject_code,
                 t2.topic,
 
-                COUNT(*) AS total_answered,
+                COUNT(
+                    CASE
+                        WHEN ta.status IN ('checked', 'reviewed')
+                         AND ta.is_correct IS NOT NULL
+                        THEN 1
+                    END
+                ) AS total_answered,
 
                 SUM(
                     CASE
-                        WHEN ta.is_correct = 1 THEN 1
+                        WHEN ta.status IN ('checked', 'reviewed')
+                         AND ta.is_correct = 1
+                        THEN 1
                         ELSE 0
                     END
                 ) AS correct_answers,
 
                 COUNT(
-                    DISTINCT ta.task_id
+                    DISTINCT CASE
+                        WHEN ta.status IN ('checked', 'reviewed')
+                         AND ta.is_correct IS NOT NULL
+                        THEN ta.task_id
+                    END
                 ) AS answered_tasks,
 
                 SUM(
