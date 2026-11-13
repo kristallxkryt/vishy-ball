@@ -411,6 +411,23 @@ def test_teacher_class_assignment_lifecycle():
         assert independent.status_code == 200, independent.text
         assert independent.json()["status"] == "pending_review"
 
+        with sqlite3.connect(DB_PATH) as connection:
+            progress_totals = connection.execute(
+                """
+                SELECT
+                    COALESCE(SUM(total_answered), 0),
+                    COALESCE(SUM(total_score), 0),
+                    COALESCE(SUM(max_score), 0)
+                FROM user_progress
+                WHERE user_id = ?
+                """,
+                (student["id"],),
+            ).fetchone()
+
+        # Ожидающая ручной проверки самостоятельная работа
+        # пока не должна менять личную статистику.
+        assert progress_totals == (3, 4.0, 5.0)
+
         private_review = client.get(
             f"/api/checking/reviews/{independent.json()['attempt_id']}",
             headers=teacher["headers"],
