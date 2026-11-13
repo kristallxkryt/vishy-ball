@@ -6,11 +6,8 @@ classes_routes.py
 
 import hashlib
 import secrets
-import sqlite3
 
-from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
