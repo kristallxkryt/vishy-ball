@@ -1,0 +1,67 @@
+name: Backend checks
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+
+jobs:
+  backend-smoke-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Use a clean test database
+        run: rm -f *.db *.sqlite *.sqlite3
+
+      - name: Compile Python modules
+        run: python -m compileall -q .
+
+      - name: Import application and verify core routes
+        run: |
+          python - <<'PY'
+          from main import app
+          from checking_routes import grade_assignment_attempt
+
+          required_paths = {
+              "/api/auth/register",
+              "/api/auth/login",
+              "/api/profile/progress",
+              "/api/admin/analytics/overview",
+              "/api/admin/analytics/students",
+              "/api/classes",
+              "/api/classes/join",
+              "/api/variants",
+              "/api/assignments",
+              "/api/assignments/{assignment_id}/start",
+              "/api/assignments/{assignment_id}/submit",
+          }
+
+          registered_paths = {
+              route.path
+              for route in app.routes
+              if hasattr(route, "path")
+          }
+
+          missing = required_paths - registered_paths
+          assert not missing, f"Missing API routes: {sorted(missing)}"
+          assert callable(grade_assignment_attempt)
+
+          print(f"Application imported successfully; {len(registered_paths)} routes registered.")
+          PY
