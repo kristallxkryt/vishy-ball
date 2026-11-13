@@ -1961,7 +1961,12 @@ def get_teacher_assignment_results(
                 aa.started_at,
                 aa.submitted_at,
 
-                COUNT(ta.id) AS checked_tasks,
+                SUM(
+                    CASE
+                        WHEN ta.status IN ('checked', 'reviewed') THEN 1
+                        ELSE 0
+                    END
+                ) AS checked_tasks,
 
                 COALESCE(SUM(ta.score), 0) AS total_score,
                 COALESCE(SUM(ta.max_score), 0) AS max_score,
