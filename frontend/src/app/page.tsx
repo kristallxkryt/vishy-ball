@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowDownRight,
@@ -9,7 +11,9 @@ import {
   GraduationCap,
   Sparkles,
   Target,
+  UserRound,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const features = [
   {
@@ -45,6 +49,23 @@ const subjects = [
 ];
 
 export default function HomePage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("vb_access_token");
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).then((response) => {
+      if (response.ok) setIsAuthenticated(true);
+      else {
+        localStorage.removeItem("vb_access_token");
+        localStorage.removeItem("vb_user");
+      }
+    }).catch(() => setIsAuthenticated(false));
+  }, []);
+
   return (
     <main className="overflow-hidden">
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -68,12 +89,20 @@ export default function HomePage() {
           <a href="#about" className="transition hover:text-white">О платформе</a>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/auth" className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:text-white sm:block">
-            Войти
-          </Link>
-          <Link href="/auth?mode=register" className="rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
-            Начать бесплатно <ArrowRight className="ml-1 inline" size={15} />
-          </Link>
+          {isAuthenticated ? (
+            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
+              <UserRound size={16} /> Личный кабинет
+            </Link>
+          ) : (
+            <>
+              <Link href="/auth" className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:text-white sm:block">
+                Войти
+              </Link>
+              <Link href="/auth?mode=register" className="rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
+                Начать бесплатно <ArrowRight className="ml-1 inline" size={15} />
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
