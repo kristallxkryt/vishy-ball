@@ -53,11 +53,19 @@ jobs:
               "/api/assignments/{assignment_id}/submit",
           }
 
-          registered_paths = {
-              route.path
-              for route in app.routes
-              if hasattr(route, "path")
-          }
+          def collect_paths(routes):
+              paths = set()
+              for route in routes:
+                  path = getattr(route, "path", None)
+                  if path:
+                      paths.add(path)
+                  nested_routes = getattr(route, "routes", None)
+                  if nested_routes:
+                      paths.update(collect_paths(nested_routes))
+              return paths
+
+          registered_paths = collect_paths(app.routes)
+          print("Registered API paths:", sorted(registered_paths))
 
           missing = required_paths - registered_paths
           assert not missing, f"Missing API routes: {sorted(missing)}"
