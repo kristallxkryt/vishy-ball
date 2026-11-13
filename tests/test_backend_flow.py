@@ -165,6 +165,28 @@ def test_teacher_class_assignment_lifecycle():
                 ),
             )
             manual_task_id = manual_cursor.lastrowid
+            partial_cursor = connection.execute(
+                """
+                INSERT INTO tasks (
+                    subject_code,
+                    topic,
+                    question,
+                    answer,
+                    task_type,
+                    checking_config_json
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "russian",
+                    "Частичные баллы",
+                    "Выбери элементы",
+                    "",
+                    "text",
+                    '{"grading":{"mode":"rules","max_score":2,"rules":[{"condition":{"type":"contains_all","value":["a"]},"score":1},{"condition":{"type":"contains_all","value":["a","b"]},"score":2}]}}',
+                ),
+            )
+            partial_task_id = partial_cursor.lastrowid
 
         created_variant = client.post(
             "/api/variants",
@@ -172,7 +194,7 @@ def test_teacher_class_assignment_lifecycle():
             json={
                 "class_id": class_id,
                 "name": "Проверочный вариант",
-                "task_ids": [task_id],
+                "task_ids": [task_id, partial_task_id, manual_task_id],
             },
         )
         assert created_variant.status_code == 201, created_variant.text
@@ -231,13 +253,50 @@ def test_teacher_class_assignment_lifecycle():
         )
         assert saved.status_code == 200, saved.text
 
+        partial_saved = client.put(
+            f"/api/assignments/{assignment_id}/answers/{partial_task_id}",
+            headers=student["headers"],
+            json={"answer": ["a"]},
+        )
+        assert partial_saved.status_code == 200, partial_saved.text
+
+        manual_saved = client.put(
+            f"/api/assignments/{assignment_id}/answers/{manual_task_id}",
+            headers=student["headers"],
+            json={"answer": "Развёрнутый ответ для преподавателя."},
+        )
+        assert manual_saved.status_code == 200, manual_saved.text
+
         submitted = client.post(
             f"/api/assignments/{assignment_id}/submit",
             headers=student["headers"],
         )
         assert submitted.status_code == 200, submitted.text
         assert submitted.json()["status"] == "submitted"
-        assert submitted.json()["grading"]["score"] == 1.0
+        assert submitted.json()["grading"]["score"] == 2.0
+        assert submitted.json()["grading"]["max_score"] == 4.0
+        assert submitted.json()["grading"]["checked_count"] == 2
+        assert submitted.json()["grading"]["pending_review_count"] == 1
+
+        assigned_pending = client.get(
+            "/api/checking/reviews/pending",
+            headers=teacher["headers"],
+        )
+        assert assigned_pending.status_code == 200
+        assigned_review = next(
+            item for item in assigned_pending.json()["reviews"]
+            if item["user_id"] == student["id"]
+            and item["assignment_attempt_id"] == attempt_id
+        )
+
+        graded = client.post(
+            f"/api/checking/reviews/{assigned_review['attempt_id']}/grade",
+            headers=teacher["headers"],
+            json={"score": 2, "comment": "Проверено по критериям."},
+        )
+        assert graded.status_code == 200, graded.text
+        assert graded.json()["status"] == "reviewed"
+        assert graded.json()["score"] == 2.0
 
         repeated_submit = client.post(
             f"/api/assignments/{assignment_id}/submit",
@@ -262,7 +321,10 @@ def test_teacher_class_assignment_lifecycle():
             if item["student_id"] == student["id"]
         )
         assert result_student["attempt"]["id"] == attempt_id
-        assert result_student["attempt"]["score"] == 1.0
+        assert result_student["attempt"]["status"] == "reviewed"
+        assert result_student["attempt"]["score"] == 4.0
+        assert result_student["attempt"]["max_score"] == 4.0
+        assert result_student["attempt"]["pending_review_count"] == 0
 
         # Самостоятельный развёрнутый ответ ожидает проверки,
         # но учитель не должен видеть его в своей очереди.
