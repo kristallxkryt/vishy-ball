@@ -569,6 +569,16 @@ def deactivate_class(
               AND revoked_at IS NULL
         """, (now, class_id))
 
+        # Закрываем назначения класса для новых попыток.
+        # Уже начатые попытки сохраняются и могут быть завершены.
+        if table_exists(conn, "class_assignments"):
+            conn.execute("""
+                UPDATE class_assignments
+                SET status = 'closed'
+                WHERE class_id = ?
+                  AND status = 'active'
+            """, (class_id,))
+
     return {
         "message": "Класс деактивирован.",
         "class_id": class_id,
