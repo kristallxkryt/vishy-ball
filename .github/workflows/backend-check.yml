@@ -61,18 +61,7 @@ jobs:
               "/api/assignments/{assignment_id}/submit",
           }
 
-          def collect_paths(routes):
-              paths = set()
-              for route in routes:
-                  path = getattr(route, "path", None)
-                  if path:
-                      paths.add(path)
-                  nested_routes = getattr(route, "routes", None)
-                  if nested_routes:
-                      paths.update(collect_paths(nested_routes))
-              return paths
-
-          registered_paths = collect_paths(app.routes)
+          registered_paths = set(app.openapi()["paths"])
           print("Registered API paths:", sorted(registered_paths))
 
           missing = required_paths - registered_paths
