@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - development
+      - frontend/design-foundation
   pull_request:
     branches:
       - main
