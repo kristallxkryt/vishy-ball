@@ -33,6 +33,7 @@ export default function PracticePage() {
   const router = useRouter();
   const taskId = Number(params.task_id);
   const subjectCode = searchParams.get("subject") || "";
+  const topicName = searchParams.get("topic") || "";
 
   const [task, setTask] = useState<Task | null>(null);
   const [answer, setAnswer] = useState("");
@@ -45,12 +46,12 @@ export default function PracticePage() {
   useEffect(() => {
     const token = localStorage.getItem("vb_access_token");
     if (!token) { router.replace("/auth"); return; }
-    if (!subjectCode || !Number.isInteger(taskId) || taskId < 1) {
+    if (!subjectCode || !topicName || !Number.isInteger(taskId) || taskId < 1) {
       setError("Не удалось определить предмет или номер задания. Вернись в каталог и открой задание оттуда.");
       setLoading(false);
       return;
     }
-    const query = new URLSearchParams({ subject_code: subjectCode, limit: "50", offset: "0" });
+    const query = new URLSearchParams({ subject_code: subjectCode, topic: topicName, limit: "50", offset: "0" });
     apiRequest<Task[]>(`/api/tasks/?${query.toString()}`)
       .then((items) => {
         const found = items.find((item) => item.id === taskId);
@@ -59,7 +60,7 @@ export default function PracticePage() {
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : "Не удалось загрузить задание."))
       .finally(() => setLoading(false));
-  }, [router, subjectCode, taskId]);
+  }, [router, subjectCode, topicName, taskId]);
 
   const isSingleChoice = task?.task_type === "single_choice";
   const isMultipleChoice = task?.task_type === "multiple_choice";
