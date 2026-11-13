@@ -6,6 +6,7 @@ on:
       - main
       - development
       - frontend/design-foundation
+      - 'frontend/**'
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-check.yml"
