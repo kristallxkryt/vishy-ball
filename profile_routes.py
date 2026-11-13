@@ -5,15 +5,15 @@ profile_routes.py
 Проект: «Высший балл»
 """
 
-import hashlib
 import sqlite3
 
+from contextlib import contextmanager
 from pathlib import Path
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+
+from auth_routes import get_current_user
 
 
 DB_PATH = Path(__file__).resolve().parent / "users.db"
@@ -23,18 +23,26 @@ router = APIRouter(
     tags=["Личный кабинет"]
 )
 
-security = HTTPBearer()
-
 
 # =====================================
 # БАЗА ДАННЫХ
 # =====================================
 
+@contextmanager
 def get_connection():
+    """Открывает соединение с гарантированным закрытием."""
     connection = sqlite3.connect(DB_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def init_profile_tables():
@@ -77,57 +85,6 @@ def init_profile_tables():
             CREATE INDEX IF NOT EXISTS idx_progress_user
             ON user_progress(user_id)
         """)
-
-
-# =====================================
-# АВТОРИЗАЦИЯ
-# =====================================
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    token = credentials.credentials
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
-
-    with get_connection() as conn:
-        user = conn.execute("""
-            SELECT
-                u.id,
-                u.username,
-                u.email,
-                s.expires_at
-            FROM auth_sessions s
-            JOIN auth_users u ON u.id = s.user_id
-            WHERE s.token_hash = ?
-        """, (token_hash,)).fetchone()
-
-    if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Недействительная сессия."
-        )
-
-    expires_at = datetime.fromisoformat(user["expires_at"])
-
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if expires_at <= datetime.now(timezone.utc):
-        with get_connection() as conn:
-            conn.execute(
-                "DELETE FROM auth_sessions WHERE token_hash = ?",
-                (token_hash,)
-            )
-
-        raise HTTPException(
-            status_code=401,
-            detail="Срок действия сессии истёк."
-        )
-
-    return user
 
 
 # =====================================
