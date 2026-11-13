@@ -120,7 +120,10 @@ def init_checking_db():
                     max_score REAL,
                     review_comment TEXT,
                     reviewed_at TEXT,
-                    reviewed_by TEXT
+                    reviewed_by TEXT,
+                    assignment_attempt_id INTEGER
+                        REFERENCES assignment_attempts(id)
+                        ON DELETE CASCADE
                 )
             """)
 
@@ -135,7 +138,8 @@ def init_checking_db():
                 "max_score",
                 "review_comment",
                 "reviewed_at",
-                "reviewed_by"
+                "reviewed_by",
+                "assignment_attempt_id"
             ]
 
             select_extras = [
@@ -158,7 +162,8 @@ def init_checking_db():
                     max_score,
                     review_comment,
                     reviewed_at,
-                    reviewed_by
+                    reviewed_by,
+                    assignment_attempt_id
                 )
                 SELECT
                     id,
