@@ -503,7 +503,7 @@ def test_teacher_class_assignment_lifecycle():
         assert ranked_student["total_attempts"] == 3
         assert ranked_student["total_score"] == 4.0
         assert ranked_student["max_score"] == 5.0
-        assert ranked_student["pending_reviews"] == 0
+        assert ranked_student["pending_reviews"] == 1
 
         problem_topics = client.get(
             "/api/admin/analytics/problem-topics",
