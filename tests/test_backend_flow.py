@@ -488,3 +488,25 @@ def test_teacher_class_assignment_lifecycle():
             headers=teacher["headers"],
         )
         assert forbidden_teacher_analytics.status_code == 403
+
+        removed_member = client.delete(
+            f"/api/classes/{class_id}/members/{student['id']}",
+            headers=teacher["headers"],
+        )
+        assert removed_member.status_code == 200, removed_member.text
+
+        former_student_access = client.get(
+            f"/api/assignments/{assignment_id}",
+            headers=student["headers"],
+        )
+        assert former_student_access.status_code == 403
+
+        historical_results = client.get(
+            f"/api/assignments/{assignment_id}/results",
+            headers=teacher["headers"],
+        )
+        assert historical_results.status_code == 200
+        assert any(
+            item["student_id"] == student["id"]
+            for item in historical_results.json()["students"]
+        )
