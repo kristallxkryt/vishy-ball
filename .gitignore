@@ -14,7 +14,12 @@ env/
 
 # SQLite databases (including local test and backup databases)
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 *.sqlite3
 
 # Test and tooling caches
