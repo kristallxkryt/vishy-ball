@@ -1451,12 +1451,6 @@ def start_assignment(
             current_user["id"]
         )
 
-        if assignment["assignment_status"] != "active":
-            raise HTTPException(
-                status_code=409,
-                detail="Эта работа больше недоступна."
-            )
-
         attempt = get_student_attempt(
             conn,
             assignment_id,
@@ -1464,6 +1458,12 @@ def start_assignment(
         )
 
         if attempt is None:
+            if assignment["assignment_status"] != "active":
+                raise HTTPException(
+                    status_code=409,
+                    detail="Эта работа больше недоступна для новых попыток."
+                )
+
             conn.execute(
                 """
                 INSERT INTO assignment_attempts (
@@ -1532,12 +1532,6 @@ def save_assignment_answer(
             assignment_id,
             current_user["id"]
         )
-
-        if assignment["assignment_status"] != "active":
-            raise HTTPException(
-                status_code=409,
-                detail="Эта работа больше недоступна."
-            )
 
         attempt = get_student_attempt(
             conn,
@@ -1653,12 +1647,6 @@ def submit_assignment(
             assignment_id,
             current_user["id"]
         )
-
-        if assignment["assignment_status"] != "active":
-            raise HTTPException(
-                status_code=409,
-                detail="Эта работа больше недоступна."
-            )
 
         attempt = get_student_attempt(
             conn,
