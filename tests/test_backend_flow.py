@@ -274,7 +274,7 @@ def test_teacher_class_assignment_lifecycle():
         assert submitted.status_code == 200, submitted.text
         assert submitted.json()["status"] == "submitted"
         assert submitted.json()["grading"]["score"] == 2.0
-        assert submitted.json()["grading"]["max_score"] == 4.0
+        assert submitted.json()["grading"]["max_score"] == 5.0
         assert submitted.json()["grading"]["checked_count"] == 2
         assert submitted.json()["grading"]["pending_review_count"] == 1
 
@@ -323,7 +323,7 @@ def test_teacher_class_assignment_lifecycle():
         assert result_student["attempt"]["id"] == attempt_id
         assert result_student["attempt"]["status"] == "reviewed"
         assert result_student["attempt"]["score"] == 4.0
-        assert result_student["attempt"]["max_score"] == 4.0
+        assert result_student["attempt"]["max_score"] == 5.0
         assert result_student["attempt"]["pending_review_count"] == 0
 
         # Самостоятельный развёрнутый ответ ожидает проверки,
