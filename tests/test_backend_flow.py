@@ -138,6 +138,28 @@ def test_teacher_class_assignment_lifecycle():
                 ),
             )
             task_id = cursor.lastrowid
+            manual_cursor = connection.execute(
+                """
+                INSERT INTO tasks (
+                    subject_code,
+                    topic,
+                    question,
+                    answer,
+                    task_type,
+                    checking_config_json
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "russian",
+                    "Ручная проверка",
+                    "Напиши развёрнутый ответ",
+                    "",
+                    "long_text",
+                    '{"grading":{"mode":"manual","max_score":2}}',
+                ),
+            )
+            manual_task_id = manual_cursor.lastrowid
 
         created_variant = client.post(
             "/api/variants",
@@ -237,13 +259,24 @@ def test_teacher_class_assignment_lifecycle():
         assert result_student["attempt"]["id"] == attempt_id
         assert result_student["attempt"]["score"] == 1.0
 
-        # Самостоятельная практика ученика не раскрывается учителю.
+        # Самостоятельный развёрнутый ответ ожидает проверки,
+        # но учитель не должен видеть его в своей очереди.
         independent = client.post(
             "/api/checking/answer",
             headers=student["headers"],
-            json={"task_id": task_id, "answer": "4"},
+            json={
+                "task_id": manual_task_id,
+                "answer": "Это мой самостоятельный развёрнутый ответ.",
+            },
         )
         assert independent.status_code == 200, independent.text
+        assert independent.json()["status"] == "pending_review"
+
+        private_review = client.get(
+            f"/api/checking/reviews/{independent.json()['attempt_id']}",
+            headers=teacher["headers"],
+        )
+        assert private_review.status_code == 403
 
         pending_reviews = client.get(
             "/api/checking/reviews/pending",
@@ -252,6 +285,5 @@ def test_teacher_class_assignment_lifecycle():
         assert pending_reviews.status_code == 200
         assert all(
             item["user_id"] != student["id"]
-            or item["assignment_attempt_id"] is not None
             for item in pending_reviews.json()["reviews"]
         )
