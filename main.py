@@ -20,6 +20,9 @@ from checking_routes import router as checking_router
 from tasks_routes import router as tasks_router
 from admin_routes import router as admin_router
 from recommendations_routes import router as recommendations_router
+from users_routes import router as users_router
+from classes_routes import router as classes_router
+from variants_routes import router as variants_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -27,6 +30,9 @@ app.include_router(tasks_router)
 app.include_router(checking_router)
 app.include_router(admin_router)
 app.include_router(recommendations_router)
+app.include_router(users_router)
+app.include_router(classes_router)
+app.include_router(variants_router)
 
 # CORS для локальной разработки
 app.add_middleware(
