@@ -49,6 +49,7 @@ def test_teacher_class_assignment_lifecycle():
     with TestClient(app) as client:
         teacher = register_and_login(client, "teacher")
         student = register_and_login(client, "student")
+        unstarted_student = register_and_login(client, "student")
         outsider = register_and_login(client, "student")
         other_teacher = register_and_login(client, "teacher")
 
@@ -145,6 +146,13 @@ def test_teacher_class_assignment_lifecycle():
             json={"token": second_token},
         )
         assert duplicate_join.status_code == 409
+
+        unstarted_join = client.post(
+            "/api/classes/join",
+            headers=unstarted_student["headers"],
+            json={"token": second_token},
+        )
+        assert unstarted_join.status_code == 200, unstarted_join.text
 
         # Создаём одно реальное задание для варианта.
         with sqlite3.connect(DB_PATH) as connection:
@@ -262,6 +270,19 @@ def test_teacher_class_assignment_lifecycle():
             headers=teacher["headers"],
         )
         assert closed.status_code == 200, closed.text
+
+        # Ученик без начатой попытки больше не может открыть работу.
+        unopened_details = client.get(
+            f"/api/assignments/{assignment_id}",
+            headers=unstarted_student["headers"],
+        )
+        assert unopened_details.status_code == 409
+
+        unopened_start = client.post(
+            f"/api/assignments/{assignment_id}/start",
+            headers=unstarted_student["headers"],
+        )
+        assert unopened_start.status_code == 409
 
         visible_assignments = client.get(
             "/api/assignments",
