@@ -522,3 +522,37 @@ def test_teacher_class_assignment_lifecycle():
             item["student_id"] == student["id"]
             for item in historical_results.json()["students"]
         )
+
+        # Финальная проверка целостности SQLite после полного сценария.
+        with get_connection() as connection:
+            foreign_key_errors = connection.execute(
+                "PRAGMA foreign_key_check"
+            ).fetchall()
+            tables = {
+                row["name"]
+                for row in connection.execute(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type = 'table'
+                    """
+                ).fetchall()
+            }
+
+        assert foreign_key_errors == []
+        assert {
+            "auth_users",
+            "auth_sessions",
+            "subjects",
+            "tasks",
+            "user_progress",
+            "classes",
+            "class_members",
+            "class_invites",
+            "variants",
+            "variant_tasks",
+            "class_assignments",
+            "assignment_attempts",
+            "assignment_answers",
+            "task_attempts",
+        }.issubset(tables)
