@@ -1316,12 +1316,25 @@ def submit_assignment_for_checking(
                 detail="Это не ваша попытка."
             )
 
-        if attempt["assignment_status"] != "active":
+        membership = conn.execute("""
+            SELECT 1
+            FROM class_members
+            WHERE class_id = ?
+              AND student_id = ?
+              AND status = 'active'
+        """, (
+            attempt["class_id"],
+            current_user["id"]
+        )).fetchone()
+
+        if membership is None:
             raise HTTPException(
-                status_code=409,
-                detail="Назначенная работа закрыта."
+                status_code=403,
+                detail="Вы больше не состоите в этом классе."
             )
 
+        # Закрытие назначения запрещает новые попытки,
+        # но не мешает завершить уже начатую работу.
         created_attempts = process_assignment_submission(
             conn,
             assignment_attempt_id
