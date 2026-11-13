@@ -1921,11 +1921,15 @@ def get_teacher_assignment_results(
             )
 
         total_students = conn.execute("""
-            SELECT COUNT(*) AS total
-            FROM class_members
-            WHERE class_id = ?
-              AND status = 'active'
+            SELECT COUNT(DISTINCT cm.student_id) AS total
+            FROM class_members cm
+            LEFT JOIN assignment_attempts aa
+                ON aa.assignment_id = ?
+               AND aa.student_id = cm.student_id
+            WHERE cm.class_id = ?
+              AND (cm.status = 'active' OR aa.id IS NOT NULL)
         """, (
+            assignment_id,
             assignment["class_id"]
         )).fetchone()["total"]
 
@@ -1964,7 +1968,7 @@ def get_teacher_assignment_results(
                 ON ta.assignment_attempt_id = aa.id
 
             WHERE cm.class_id = ?
-              AND cm.status = 'active'
+              AND (cm.status = 'active' OR aa.id IS NOT NULL)
 
             GROUP BY
                 u.id,
