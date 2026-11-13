@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -366,6 +366,13 @@ def test_teacher_class_assignment_lifecycle():
             headers=teacher["headers"],
         )
         assert teacher_results.status_code == 200, teacher_results.text
+
+        foreign_teacher_results = client.get(
+            f"/api/assignments/{assignment_id}/results",
+            headers=other_teacher["headers"],
+        )
+        assert foreign_teacher_results.status_code == 403
+
         result_students = teacher_results.json()["students"]
         result_student = next(
             item for item in result_students
@@ -483,6 +490,32 @@ def test_teacher_class_assignment_lifecycle():
         assert overview.json()["users"]["admins"] == 1
         assert overview.json()["reviews"]["pending"] == 1
 
+        # Проверяем рейтинг учеников и аналитику проблемных тем.
+        student_analytics = client.get(
+            "/api/admin/analytics/students",
+            headers=admin_headers,
+        )
+        assert student_analytics.status_code == 200, student_analytics.text
+        ranked_student = next(
+            item for item in student_analytics.json()["students"]
+            if item["user_id"] == student["id"]
+        )
+        assert ranked_student["total_attempts"] == 3
+        assert ranked_student["total_score"] == 4.0
+        assert ranked_student["max_score"] == 5.0
+        assert ranked_student["pending_reviews"] == 0
+
+        problem_topics = client.get(
+            "/api/admin/analytics/problem-topics",
+            headers=admin_headers,
+        )
+        assert problem_topics.status_code == 200, problem_topics.text
+        assert any(
+            item["topic"] == "Частичные баллы"
+            and item["wrong_attempts"] == 1
+            for item in problem_topics.json()["topics"]
+        )
+
         forbidden_teacher_analytics = client.get(
             "/api/admin/analytics/overview",
             headers=teacher["headers"],
@@ -556,3 +589,41 @@ def test_teacher_class_assignment_lifecycle():
             "assignment_answers",
             "task_attempts",
         }.issubset(tables)
+
+
+
+def test_expired_session_is_rejected_and_removed():
+    with TestClient(app) as client:
+        student = register_and_login(client, "student")
+
+        token = student["headers"]["Authorization"].split(" ", 1)[1]
+        import hashlib
+
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        expired_at = (
+            datetime.now(timezone.utc) - timedelta(days=1)
+        ).isoformat()
+
+        with get_connection() as connection:
+            connection.execute(
+                """
+                UPDATE auth_sessions
+                SET expires_at = ?
+                WHERE token_hash = ?
+                """,
+                (expired_at, token_hash),
+            )
+
+        rejected = client.get(
+            "/api/auth/me",
+            headers=student["headers"],
+        )
+        assert rejected.status_code == 401
+
+        with get_connection() as connection:
+            remaining = connection.execute(
+                "SELECT 1 FROM auth_sessions WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+
+        assert remaining is None
