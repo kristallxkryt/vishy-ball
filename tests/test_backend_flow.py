@@ -489,6 +489,18 @@ def test_teacher_class_assignment_lifecycle():
         )
         assert forbidden_teacher_analytics.status_code == 403
 
+        admin_user_list = client.get(
+            "/api/users",
+            headers=admin_headers,
+        )
+        assert admin_user_list.status_code == 200
+
+        forbidden_teacher_user_list = client.get(
+            "/api/users",
+            headers=teacher["headers"],
+        )
+        assert forbidden_teacher_user_list.status_code == 403
+
         removed_member = client.delete(
             f"/api/classes/{class_id}/members/{student['id']}",
             headers=teacher["headers"],
