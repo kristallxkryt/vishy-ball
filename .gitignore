@@ -11,6 +11,7 @@ env/
 # Local configuration and secrets
 .env
 .env.*
+!.env.example
 
 # SQLite databases (including local test and backup databases)
 *.db
