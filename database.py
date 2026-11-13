@@ -23,6 +23,8 @@ import hashlib
 import hmac
 import os
 import sqlite3
+
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -31,11 +33,22 @@ _HASH_NAME = "sha256"
 _ITERATIONS = 310_000
 
 
-def _connect() -> sqlite3.Connection:
-    connection = sqlite3.connect(DB_PATH)
+@contextmanager
+def _connect():
+    """Открывает соединение с гарантированным закрытием."""
+    connection = sqlite3.connect(DB_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+    connection.execute("PRAGMA busy_timeout = 10000")
+
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def init_db() -> None:
