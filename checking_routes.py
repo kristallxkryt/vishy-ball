@@ -1238,6 +1238,40 @@ def process_assignment_submission(
     return created_attempts
 
 
+def grade_assignment_attempt(
+    conn,
+    assignment_attempt_id: int,
+    user_id: int,
+    now: str
+):
+    """
+    Проверяет ответы назначенной попытки.
+    Вызывается из variants_routes.py внутри уже открытой транзакции.
+    Создаёт task_attempts и обновляет прогресс только один раз.
+    """
+    attempt = get_assignment_attempt_for_checking(
+        conn,
+        assignment_attempt_id
+    )
+
+    if attempt["student_id"] != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Это не ваша попытка."
+        )
+
+    if attempt["status"] != "in_progress":
+        raise HTTPException(
+            status_code=409,
+            detail="Эта попытка уже была отправлена."
+        )
+
+    return process_assignment_submission(
+        conn,
+        assignment_attempt_id
+    )
+
+
 # =========================================================
 # SUBMIT ASSIGNMENT FOR CHECKING
 # =========================================================
