@@ -1032,6 +1032,8 @@ def get_analytics_overview():
                 COUNT(*) AS total_users,
                 SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END)
                     AS total_students,
+                SUM(CASE WHEN role = 'teacher' THEN 1 ELSE 0 END)
+                    AS total_teachers,
                 SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END)
                     AS total_admins
             FROM auth_users
@@ -1083,6 +1085,7 @@ def get_analytics_overview():
         "users": {
             "total": users["total_users"] or 0,
             "students": users["total_students"] or 0,
+            "teachers": users["total_teachers"] or 0,
             "admins": users["total_admins"] or 0,
             "active_students": active["active_students"] or 0
         },
