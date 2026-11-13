@@ -377,6 +377,27 @@ def test_teacher_class_assignment_lifecycle():
         assert result_student["attempt"]["max_score"] == 5.0
         assert result_student["attempt"]["pending_review_count"] == 0
 
+        with sqlite3.connect(DB_PATH) as connection:
+            assigned_attempt_rows = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM task_attempts
+                WHERE assignment_attempt_id = ?
+                """,
+                (attempt_id,),
+            ).fetchone()[0]
+            progress_total = connection.execute(
+                """
+                SELECT COALESCE(SUM(total_answered), 0)
+                FROM user_progress
+                WHERE user_id = ?
+                """,
+                (student["id"],),
+            ).fetchone()[0]
+
+        assert assigned_attempt_rows == 3
+        assert progress_total == 3
+
         # Самостоятельный развёрнутый ответ ожидает проверки,
         # но учитель не должен видеть его в своей очереди.
         independent = client.post(
