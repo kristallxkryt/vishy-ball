@@ -1419,6 +1419,19 @@ def get_assignment(
                 current_user["id"]
             )
 
+            if assignment["assignment_status"] != "active":
+                existing_attempt = get_student_attempt(
+                    conn,
+                    assignment_id,
+                    current_user["id"]
+                )
+
+                if existing_attempt is None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Работа закрыта для новых участников."
+                    )
+
             return {
                 "assignment": {
                     "id": assignment["id"],
