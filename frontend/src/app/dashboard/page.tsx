@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ArrowRight, BookOpen, CheckCircle2, ChevronRight, GraduationCap,
-  LayoutDashboard, LogOut, Target, TrendingUp, UserRound,
+  LayoutDashboard, LogOut, Target, TrendingUp, UserRound, ChevronDown, Settings,
 } from "lucide-react";
 import { apiRequest, ApiUser } from "@/lib/api";
 
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("vb_access_token");
@@ -84,7 +85,25 @@ export default function DashboardPage() {
       <div className="lg:pl-[248px]">
         <header className="flex h-[76px] items-center justify-between border-b border-white/[0.07] px-6 sm:px-10">
           <div><p className="text-xs text-muted">Личный кабинет</p><p className="mt-1 text-sm font-bold">Обзор подготовки</p></div>
-          <div className="flex items-center gap-3"><span className="hidden text-right sm:block"><span className="block text-xs font-bold">{user?.username || "Ученик"}</span><span className="text-[10px] capitalize text-muted">{user?.role === "teacher" ? "Учитель" : user?.role === "admin" ? "Администратор" : "Ученик"}</span></span><span className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-panel text-lime"><UserRound size={18} /></span><button onClick={logout} aria-label="Выйти" className="ml-1 text-muted hover:text-white lg:hidden"><LogOut size={18} /></button></div>
+          <div className="relative flex items-center gap-3">
+            <span className="hidden text-right sm:block"><span className="block text-xs font-bold">{user?.username || "Ученик"}</span><span className="text-[10px] capitalize text-muted">{user?.role === "teacher" ? "Учитель" : user?.role === "admin" ? "Администратор" : "Ученик"}</span></span>
+            <button type="button" onClick={() => setProfileMenuOpen((open) => !open)} aria-expanded={profileMenuOpen} aria-label="Меню профиля" className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-panel px-3 text-lime transition hover:border-lime/30">
+              <UserRound size={18} /><ChevronDown size={14} className={`transition ${profileMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#151e19] p-2 shadow-2xl">
+                <Link href="/dashboard" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
+                  <LayoutDashboard size={16} className="text-lime" /> Личный кабинет
+                </Link>
+                <Link href="/account" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
+                  <Settings size={16} className="text-lime" /> Настройки аккаунта
+                </Link>
+                <button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-muted transition hover:bg-white/[0.06] hover:text-white">
+                  <LogOut size={16} /> Выйти
+                </button>
+              </div>
+            )}
+          </div>
         </header>
         <div className="mx-auto max-w-[1280px] px-6 py-9 sm:px-10 sm:py-12">
           <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow">ТВОЙ ПЛАН НА РЕЗУЛЬТАТ</p><h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Привет, {user?.username || "будущий стобалльник"} 👋</h1><p className="mt-3 text-sm text-muted">Продолжай двигаться вперёд. Каждый ответ имеет значение.</p></div><Link href="#subjects" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink transition hover:bg-[#d5ff86]">Выбрать предмет <ArrowRight size={16} /></Link></div>
