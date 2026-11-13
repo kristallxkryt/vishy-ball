@@ -265,7 +265,7 @@ export default function SubjectPage() {
                     <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-white/90">{task.question}</p>
                     <div className="mt-5 flex justify-end">
                       <Link
-                        href={`/practice/${task.id}?subject=${encodeURIComponent(subjectCode)}`}
+                        href={`/practice/${task.id}?subject=${encodeURIComponent(subjectCode)}&topic=${encodeURIComponent(selectedTopic || "")}`}
                         className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-black text-ink transition hover:bg-[#d5ff86]"
                       >
                         Решить задание <ArrowRight size={15} />
