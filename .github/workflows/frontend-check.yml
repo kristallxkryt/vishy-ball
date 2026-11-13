@@ -3,6 +3,8 @@ name: Frontend checks
 on:
   push:
     branches:
+      - main
+      - development
       - frontend/design-foundation
     paths:
       - "frontend/**"
