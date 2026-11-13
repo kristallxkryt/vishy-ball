@@ -1,10 +1,13 @@
 from pathlib import Path
+import json
 import os
 import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -13,6 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from main import app
 from auth_routes import create_session, get_connection, hash_password
+from checking_routes import evaluate_answer
 
 
 DB_PATH = PROJECT_ROOT / "users.db"
@@ -627,3 +631,98 @@ def test_expired_session_is_rejected_and_removed():
             ).fetchone()
 
         assert remaining is None
+
+
+
+@pytest.mark.parametrize(
+    ("task_type", "config", "submitted", "expected_score", "max_score"),
+    [
+        (
+            "text",
+            {
+                "grading": {"mode": "exact", "max_score": 2},
+                "correct_answer": "Правильный ответ",
+            },
+            "  ПРАВИЛЬНЫЙ   ОТВЕТ ",
+            2.0,
+            2.0,
+        ),
+        (
+            "single_choice",
+            {
+                "grading": {"mode": "exact", "max_score": 1},
+                "correct_option_id": "option-b",
+            },
+            "option-b",
+            1.0,
+            1.0,
+        ),
+        (
+            "multiple_choice",
+            {
+                "grading": {"mode": "exact", "max_score": 1},
+                "correct_option_ids": ["option-a", "option-c"],
+            },
+            ["option-c", "option-a"],
+            1.0,
+            1.0,
+        ),
+        (
+            "matching",
+            {
+                "grading": {"mode": "exact", "max_score": 2},
+                "correct_pairs": {"left-1": "right-2", "left-2": "right-1"},
+            },
+            {"left-2": "right-1", "left-1": "right-2"},
+            2.0,
+            2.0,
+        ),
+        (
+            "ordering",
+            {
+                "grading": {"mode": "exact", "max_score": 3},
+                "correct_order": ["first", "second", "third"],
+            },
+            ["first", "second", "third"],
+            3.0,
+            3.0,
+        ),
+    ],
+)
+def test_exact_grading_for_supported_task_types(
+    task_type,
+    config,
+    submitted,
+    expected_score,
+    max_score,
+):
+    task = {
+        "task_type": task_type,
+        "checking_config_json": json.dumps(config),
+        "answer": "",
+    }
+
+    result = evaluate_answer(task, submitted)
+
+    assert result == {
+        "status": "checked",
+        "is_correct": 1,
+        "score": expected_score,
+        "max_score": max_score,
+    }
+
+
+def test_multiple_choice_rejects_duplicate_option_ids():
+    task = {
+        "task_type": "multiple_choice",
+        "checking_config_json": json.dumps({
+            "grading": {"mode": "exact", "max_score": 1},
+            "correct_option_ids": ["option-a", "option-b"],
+        }),
+        "answer": "",
+    }
+
+    with pytest.raises(HTTPException) as error:
+        evaluate_answer(task, ["option-a", "option-a"])
+
+    assert error.value.status_code == 422
