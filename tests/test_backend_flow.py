@@ -96,7 +96,21 @@ def test_teacher_class_assignment_lifecycle():
             headers=teacher["headers"],
         )
         assert second_invite.status_code == 201, second_invite.text
+        assert second_invite.json()["valid_days"] == 7
         second_token = second_invite.json()["invite_url"].rsplit("/", 1)[-1]
+
+        with sqlite3.connect(DB_PATH) as connection:
+            stored_token_hash = connection.execute(
+                """
+                SELECT token_hash
+                FROM class_invites
+                WHERE class_id = ?
+                  AND revoked_at IS NULL
+                """,
+                (class_id,),
+            ).fetchone()[0]
+        assert stored_token_hash != second_token
+        assert len(stored_token_hash) == 64
 
         expired_link = client.post(
             "/api/classes/join",
@@ -111,6 +125,19 @@ def test_teacher_class_assignment_lifecycle():
             json={"token": second_token},
         )
         assert joined.status_code == 200, joined.text
+
+        left_class = client.delete(
+            f"/api/classes/{class_id}/leave",
+            headers=student["headers"],
+        )
+        assert left_class.status_code == 200, left_class.text
+
+        rejoined = client.post(
+            "/api/classes/join",
+            headers=student["headers"],
+            json={"token": second_token},
+        )
+        assert rejoined.status_code == 200, rejoined.text
 
         duplicate_join = client.post(
             "/api/classes/join",
