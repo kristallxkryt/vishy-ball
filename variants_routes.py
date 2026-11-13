@@ -318,6 +318,7 @@ def get_teacher_class(conn, class_id, teacher_id):
             c.teacher_id,
             c.name,
             c.subject_code,
+            c.is_active,
             s.name AS subject_name
         FROM classes c
         JOIN subjects s
@@ -337,6 +338,12 @@ def get_teacher_class(conn, class_id, teacher_id):
         raise HTTPException(
             status_code=403,
             detail="У вас нет доступа к этому классу."
+        )
+
+    if not class_data["is_active"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Нельзя создавать варианты для деактивированного класса."
         )
 
     return class_data
