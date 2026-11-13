@@ -1,6 +1,8 @@
 from pathlib import Path
+import os
 import sqlite3
 import sys
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -10,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from main import app
+from auth_routes import create_session, get_connection, hash_password
 
 
 DB_PATH = PROJECT_ROOT / "users.db"
@@ -402,3 +405,48 @@ def test_teacher_class_assignment_lifecycle():
             item["user_id"] != student["id"]
             for item in pending_reviews.json()["reviews"]
         )
+
+        # Проверяем административную аналитику и разграничение доступа.
+        admin_salt = os.urandom(16)
+        with get_connection() as connection:
+            admin_cursor = connection.execute(
+                """
+                INSERT INTO auth_users (
+                    username,
+                    email,
+                    password_hash,
+                    salt,
+                    created_at,
+                    role,
+                    is_active
+                )
+                VALUES (?, ?, ?, ?, ?, 'admin', 1)
+                """,
+                (
+                    f"admin_{uuid4().hex[:10]}",
+                    f"admin_{uuid4().hex[:10]}@example.com",
+                    hash_password("AdminStrongPass123", admin_salt),
+                    admin_salt.hex(),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+            admin_id = admin_cursor.lastrowid
+
+        admin_token = create_session(admin_id)
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        overview = client.get(
+            "/api/admin/analytics/overview",
+            headers=admin_headers,
+        )
+        assert overview.status_code == 200, overview.text
+        assert overview.json()["users"]["teachers"] >= 2
+        assert overview.json()["users"]["students"] >= 3
+        assert overview.json()["users"]["admins"] == 1
+        assert overview.json()["reviews"]["pending"] == 1
+
+        forbidden_teacher_analytics = client.get(
+            "/api/admin/analytics/overview",
+            headers=teacher["headers"],
+        )
+        assert forbidden_teacher_analytics.status_code == 403
