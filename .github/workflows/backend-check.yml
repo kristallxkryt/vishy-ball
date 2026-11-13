@@ -28,6 +28,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
 
+      - name: Audit committed SQLite databases
+        run: python scripts/audit_sqlite.py
+
+      - name: Verify startup migrations against existing database
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from main import app
+
+          connection = sqlite3.connect("users.db")
+          try:
+              integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+              foreign_key_issues = connection.execute("PRAGMA foreign_key_check").fetchall()
+              assert integrity == "ok", integrity
+              assert not foreign_key_issues, foreign_key_issues
+              print(f"Existing database migrated successfully; {len(app.openapi()['paths'])} API routes registered.")
+          finally:
+              connection.close()
+          PY
+
       - name: Use a clean test database
         run: rm -f *.db *.sqlite *.sqlite3
 
