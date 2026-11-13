@@ -85,32 +85,6 @@ def init_classes_tables():
             )
         """)
 
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_classes_teacher
-            ON classes(teacher_id, is_active)
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_class_members_student
-            ON class_members(student_id, status)
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_class_members_class
-            ON class_members(class_id, status)
-        """)
-
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_class_invites_class
-            ON class_invites(class_id, expires_at)
-        """)
-
-        conn.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_one_unrevoked_invite_per_class
-            ON class_invites(class_id)
-            WHERE revoked_at IS NULL
-        """)
-
         member_columns = {
             row["name"]
             for row in conn.execute(
@@ -146,6 +120,58 @@ def init_classes_tables():
             UPDATE class_members
             SET joined_at = COALESCE(joined_at, CURRENT_TIMESTAMP),
                 updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+        """)
+
+        invite_columns = {
+            row["name"]
+            for row in conn.execute(
+                "PRAGMA table_info(class_invites)"
+            ).fetchall()
+        }
+
+        if "revoked_at" not in invite_columns:
+            conn.execute("""
+                ALTER TABLE class_invites
+                ADD COLUMN revoked_at TEXT
+            """)
+
+        # При миграции сохраняем самое новое непогашенное приглашение.
+        conn.execute("""
+            UPDATE class_invites
+            SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+            WHERE revoked_at IS NULL
+              AND id NOT IN (
+                  SELECT MAX(id)
+                  FROM class_invites
+                  WHERE revoked_at IS NULL
+                  GROUP BY class_id
+              )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_classes_teacher
+            ON classes(teacher_id, is_active)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_class_members_student
+            ON class_members(student_id, status)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_class_members_class
+            ON class_members(class_id, status)
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_class_invites_class
+            ON class_invites(class_id, expires_at)
+        """)
+
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_one_unrevoked_invite_per_class
+            ON class_invites(class_id)
+            WHERE revoked_at IS NULL
         """)
 
 
