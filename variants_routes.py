@@ -1787,12 +1787,15 @@ def get_assignment_results(
 
         total_students = conn.execute(
             """
-            SELECT COUNT(*) AS total
-            FROM class_members
-            WHERE class_id = ?
-              AND status = 'active'
+            SELECT COUNT(DISTINCT cm.student_id) AS total
+            FROM class_members cm
+            LEFT JOIN assignment_attempts aa
+                ON aa.assignment_id = ?
+               AND aa.student_id = cm.student_id
+            WHERE cm.class_id = ?
+              AND (cm.status = 'active' OR aa.id IS NOT NULL)
             """,
-            (assignment["class_id"],)
+            (assignment_id, assignment["class_id"])
         ).fetchone()["total"]
 
         rows = conn.execute(
@@ -1823,7 +1826,7 @@ def get_assignment_results(
                AND aa.student_id = u.id
 
             WHERE cm.class_id = ?
-              AND cm.status = 'active'
+              AND (cm.status = 'active' OR aa.id IS NOT NULL)
 
             ORDER BY u.username COLLATE NOCASE
 
