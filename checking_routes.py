@@ -1019,7 +1019,7 @@ def get_assignment_attempt_for_checking(
             ON a.id = aa.assignment_id
         WHERE aa.id = ?
     """, (
-        assignment_attempt_id
+        assignment_attempt_id,
     )).fetchone()
 
     if attempt is None:
