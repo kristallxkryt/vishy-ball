@@ -309,59 +309,91 @@ def create_session(user_id: int) -> str:
 # REGISTRATION
 # =========================================================
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=202)
 def register(data: RegisterRequest):
     username = data.username.strip()
     email = str(data.email).strip().lower()
     role = data.role
 
+    with get_connection() as conn:
+        existing = conn.execute(
+            """
+            SELECT 1 FROM auth_users
+            WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
+            """,
+            (username, email)
+        ).fetchone()
+        pending = conn.execute(
+            """
+            SELECT 1 FROM pending_registrations
+            WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
+            """,
+            (username, email)
+        ).fetchone()
+    if existing or pending:
+        raise HTTPException(status_code=409, detail="Такой логин или email уже зарегистрирован либо ожидает подтверждения.")
+
     salt = os.urandom(16)
-
-    password_hash = hash_password(
-        data.password,
-        salt
+    password_hash = hash_password(data.password, salt)
+    code = _new_code()
+    _send_email_code(
+        email,
+        "Подтверждение регистрации — Высший балл",
+        "Для завершения регистрации на платформе «Высший балл» введите этот код:",
+        code
     )
-
-    try:
-        with get_connection() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO auth_users (
-                    username,
-                    email,
-                    password_hash,
-                    salt,
-                    created_at,
-                    role,
-                    is_active
-                )
-                VALUES (?, ?, ?, ?, ?, ?, 1)
-                """,
-                (
-                    username,
-                    email,
-                    password_hash,
-                    salt.hex(),
-                    datetime.now(timezone.utc).isoformat(),
-                    role
-                )
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO pending_registrations
+            (email, username, password_hash, salt, role, code_hash, expires_at, attempts, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+            """,
+            (
+                email, username, password_hash, salt.hex(), role,
+                _code_hash(code), _expires_at(), _now().isoformat()
             )
-
-            user_id = cursor.lastrowid
-
-    except sqlite3.IntegrityError:
-        raise HTTPException(
-            status_code=409,
-            detail="Такой логин или email уже зарегистрирован."
         )
+    return {"message": "Код подтверждения отправлен на указанную почту.", "verification_required": True}
 
+
+@router.post("/register/verify", status_code=201)
+def verify_registration(data: VerifyRegistrationRequest):
+    email = str(data.email).strip().lower()
+    with get_connection() as conn:
+        pending = conn.execute(
+            "SELECT * FROM pending_registrations WHERE email = ? COLLATE NOCASE",
+            (email,)
+        ).fetchone()
+        try:
+            _verify_stored_code(pending, data.code)
+        except HTTPException as exc:
+            if pending is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
+                conn.execute(
+                    "UPDATE pending_registrations SET attempts = attempts + 1 WHERE email = ?",
+                    (email,)
+                )
+            raise
+        cursor = conn.execute(
+            """
+            INSERT INTO auth_users (
+                username, email, password_hash, salt, created_at,
+                role, is_active, email_verified
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+            """,
+            (
+                pending["username"], email, pending["password_hash"],
+                pending["salt"], _now().isoformat(), pending["role"]
+            )
+        )
+        user_id = cursor.lastrowid
+        conn.execute("DELETE FROM pending_registrations WHERE email = ?", (email,))
     return {
-        "message": "Аккаунт успешно создан!",
+        "message": "Почта подтверждена, аккаунт создан.",
         "user": {
-            "id": user_id,
-            "username": username,
-            "email": email,
-            "role": role
+            "id": user_id, "username": pending["username"],
+            "email": email, "role": pending["role"]
         }
     }
 
@@ -384,7 +416,8 @@ def login(data: LoginRequest):
                 password_hash,
                 salt,
                 role,
-                is_active
+                is_active,
+                email_verified
             FROM auth_users
             WHERE username = ? COLLATE NOCASE
                OR email = ? COLLATE NOCASE
@@ -418,6 +451,12 @@ def login(data: LoginRequest):
         raise HTTPException(
             status_code=403,
             detail="Ваш аккаунт заблокирован."
+        )
+
+    if not user["email_verified"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Сначала подтвердите адрес электронной почты."
         )
 
     token = create_session(user["id"])
