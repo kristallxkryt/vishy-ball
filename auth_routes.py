@@ -157,6 +157,11 @@ class LoginRequest(BaseModel):
         max_length=128
     )
 
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 
 # =========================================================
 # SESSION MANAGEMENT
@@ -458,6 +463,48 @@ def get_me(
     current_user: dict = Depends(get_current_user)
 ):
     return current_user
+
+
+# =========================================================
+# PASSWORD CHANGE
+# =========================================================
+
+@router.post("/password-change")
+def change_password(
+    data: PasswordChangeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as conn:
+        user = conn.execute(
+            "SELECT password_hash, salt FROM auth_users WHERE id = ?",
+            (current_user["id"],)
+        ).fetchone()
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="Пользователь не найден.")
+
+        current_hash = hash_password(
+            data.current_password,
+            bytes.fromhex(user["salt"])
+        )
+        if not hmac.compare_digest(current_hash, user["password_hash"]):
+            raise HTTPException(status_code=400, detail="Текущий пароль указан неверно.")
+
+        if hmac.compare_digest(data.current_password, data.new_password):
+            raise HTTPException(status_code=400, detail="Новый пароль должен отличаться от текущего.")
+
+        new_salt = os.urandom(16)
+        new_hash = hash_password(data.new_password, new_salt)
+        conn.execute(
+            "UPDATE auth_users SET password_hash = ?, salt = ? WHERE id = ?",
+            (new_hash, new_salt.hex(), current_user["id"])
+        )
+        conn.execute(
+            "DELETE FROM auth_sessions WHERE user_id = ?",
+            (current_user["id"],)
+        )
+
+    return {"message": "Пароль изменён. Войдите в аккаунт с новым паролем."}
 
 
 # =========================================================
