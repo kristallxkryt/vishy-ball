@@ -19,27 +19,16 @@ function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [verificationStep, setVerificationStep] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
     try {
-      if (mode === "register" && !verificationStep) {
+      if (mode === "register") {
         await apiRequest("/api/auth/register", {
           method: "POST",
           body: JSON.stringify({ username, email, password, role }),
-        });
-        setVerificationStep(true);
-        return;
-      }
-      if (mode === "register" && verificationStep) {
-        await apiRequest("/api/auth/register/verify", {
-          method: "POST",
-          body: JSON.stringify({ email, code: verificationCode }),
         });
       }
       const result = await apiRequest<LoginResponse>("/api/auth/login", {
@@ -51,23 +40,6 @@ function AuthForm() {
       router.push("/dashboard");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Не удалось выполнить запрос.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resendCode() {
-    setError("");
-    setStatusMessage("");
-    setLoading(true);
-    try {
-      await apiRequest("/api/auth/register/resend", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      setStatusMessage("Новый код отправлен на почту.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Не удалось отправить код.");
     } finally {
       setLoading(false);
     }
@@ -85,34 +57,25 @@ function AuthForm() {
         </Link>
         <div className="mt-9 text-center">
           <p className="eyebrow">{mode === "login" ? "С возвращением" : "Первый шаг к цели"}</p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Создать аккаунт"}</h1>
+          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"}</h1>
           <p className="mt-3 text-sm leading-6 text-muted">{mode === "login" ? "Продолжай подготовку с того места, где остановился." : "Выбери роль и присоединяйся к платформе."}</p>
         </div>
         <div className="mt-8 grid grid-cols-2 rounded-xl border border-white/[0.08] bg-black/20 p-1">
-          <button type="button" onClick={() => { setMode("login"); setError(""); setVerificationStep(false); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "login" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Вход</button>
-          <button type="button" onClick={() => { setMode("register"); setError(""); setVerificationStep(false); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "register" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Регистрация</button>
+          <button type="button" onClick={() => { setMode("login"); setError(""); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "login" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Вход</button>
+          <button type="button" onClick={() => { setMode("register"); setError(""); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "register" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Регистрация</button>
         </div>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {mode === "register" && !verificationStep && (
+          {mode === "register" && (
             <>
               <label className="block text-xs font-bold text-white/75">Имя пользователя<input required minLength={3} maxLength={32} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Например, student_01" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>
               <label className="block text-xs font-bold text-white/75">Электронная почта<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>
               <div className="block text-xs font-bold text-white/75">Тип аккаунта<div className="mt-2 grid grid-cols-2 gap-2">{(["student", "teacher"] as const).map((value) => <button key={value} type="button" onClick={() => setRole(value)} className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${role === value ? "border-lime/50 bg-lime/10 text-lime" : "border-white/10 bg-black/20 text-muted hover:text-white"}`}>{value === "student" ? "Ученик" : "Учитель"}</button>)}</div></div>
             </>
           )}
-          {mode === "register" && verificationStep && (
-            <div className="space-y-3">
-              <p className="rounded-xl border border-lime/20 bg-lime/[0.06] px-4 py-3 text-sm leading-6 text-muted">Мы отправили шестизначный код на <span className="font-bold text-white">{email}</span>. Введи его, чтобы подтвердить почту и создать аккаунт.</p>
-              <label className="block text-xs font-bold text-white/75">Код из письма<input required inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} pattern="[0-9]{6}" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-center text-xl font-black tracking-[.4em] outline-none focus:border-lime/60" /></label>
-              <button type="button" onClick={() => { setVerificationStep(false); setVerificationCode(""); setError(""); }} className="text-xs font-semibold text-muted transition hover:text-white">Изменить данные регистрации</button>
-              <button type="button" disabled={loading} onClick={resendCode} className="text-xs font-semibold text-lime transition hover:text-white disabled:opacity-50">Отправить код повторно</button>
-            </div>
-          )}
           {mode === "login" && <label className="block text-xs font-bold text-white/75">Логин или почта<input required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Логин или email" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>}
           <label className="block text-xs font-bold text-white/75">Пароль<div className="relative mt-2"><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Не менее 8 символов" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 pr-12 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>
-          {statusMessage && <p role="status" className="rounded-xl border border-lime/20 bg-lime/[0.07] px-4 py-3 text-sm text-lime">{statusMessage}</p>}
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p>}
-          <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime px-5 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-wait disabled:opacity-60">{loading ? "Подождите..." : mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Отправить код"} {!loading && <ArrowRight size={17} />}</button>
+          <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime px-5 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-wait disabled:opacity-60">{loading ? "Подождите..." : mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"} {!loading && <ArrowRight size={17} />}</button>
         </form>
         <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-muted"><ShieldCheck size={14} className="text-lime" /> Данные передаются через API платформы</div>
       </div>
