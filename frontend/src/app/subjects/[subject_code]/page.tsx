@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronRight,
-  Filter, GraduationCap, Search, Target,
+  Filter, GraduationCap, Search, Target, ClipboardCheck, FilePlus2,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 
@@ -23,6 +23,9 @@ type TopicsResponse = {
   total_tasks: number;
   topics: Topic[];
 };
+
+type MockHistoryItem = { id: number; mode: "preset" | "bank_mix"; variant_label: string | null; status: "in_progress" | "submitted"; created_at: string; submitted_at: string | null; score: number | null; max_score: number | null; pending_review_count: number };
+type MockCatalog = { subject_code: string; subject_name: string; available_numbers: Array<{ exam_number: number; tasks_count: number }>; presets: Array<{ variant_label: string; numbers_count: number; tasks_count: number }>; history: MockHistoryItem[]; notice: string };
 
 type Task = {
   id: number;
@@ -65,6 +68,9 @@ export default function SubjectPage() {
   const [loadingTopics, setLoadingTopics] = useState(true);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [error, setError] = useState("");
+  const [mockCatalog, setMockCatalog] = useState<MockCatalog | null>(null);
+  const [mockLoading, setMockLoading] = useState(true);
+  const [mockBusy, setMockBusy] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("vb_access_token");
@@ -82,6 +88,34 @@ export default function SubjectPage() {
       })
       .finally(() => setLoadingTopics(false));
   }, [router, subjectCode]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("vb_access_token");
+    if (!token) return;
+    apiRequest<MockCatalog>(`/api/mock-exams/${encodeURIComponent(subjectCode)}`, {}, token)
+      .then(setMockCatalog)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Не удалось загрузить пробные варианты."))
+      .finally(() => setMockLoading(false));
+  }, [subjectCode]);
+
+  async function startMockExam(mode: "preset" | "bank_mix", variantLabel?: string) {
+    const token = localStorage.getItem("vb_access_token");
+    if (!token) { router.replace("/auth"); return; }
+    setMockBusy(true);
+    setError("");
+    try {
+      const response = await apiRequest<{ attempt: { id: number } }>(
+        `/api/mock-exams/${encodeURIComponent(subjectCode)}/generate`,
+        { method: "POST", body: JSON.stringify({ mode, ...(variantLabel ? { variant_label: variantLabel } : {}) }) },
+        token,
+      );
+      router.push(`/mock-exams/${response.attempt.id}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось создать пробный вариант.");
+    } finally {
+      setMockBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!selectedTopic) {
@@ -323,6 +357,45 @@ export default function SubjectPage() {
             )}
           </section>
         )}
+        <section className="mt-14 border-t border-white/[0.07] pt-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow">ПОЛНОЦЕННАЯ ТРЕНИРОВКА</p>
+              <h2 className="mt-2 text-2xl font-black">Пробный экзамен</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Выбери готовый набор из банка или собери новый вариант: в нём будет по одному случайному заданию каждого доступного номера ЕГЭ.</p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-muted"><ClipboardCheck size={15} /> {mockCatalog?.available_numbers.length ?? 0} типов в банке</span>
+          </div>
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <article className="rounded-2xl border border-white/[0.08] bg-panel p-6">
+              <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.07] text-white"><FilePlus2 size={19} /></span><div><h3 className="font-extrabold">Сборный вариант</h3><p className="mt-1 text-xs text-muted">Случайные задания по номерам</p></div></div>
+              <p className="mt-4 text-sm leading-6 text-muted">Система выберет по одному заданию каждого номера, который сейчас представлен в банке. При новом запуске набор будет другим.</p>
+              <button disabled={mockBusy || mockLoading || (mockCatalog?.available_numbers.length ?? 0) < 2} onClick={() => startMockExam("bank_mix")} className="mt-5 w-full rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">{mockBusy ? "Создаём…" : "Составить из банка"}</button>
+            </article>
+            <article className="rounded-2xl border border-white/[0.08] bg-panel p-6">
+              <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.07] text-white"><BookOpen size={19} /></span><div><h3 className="font-extrabold">Готовые варианты</h3><p className="mt-1 text-xs text-muted">Наборы с общей меткой варианта</p></div></div>
+              {mockLoading ? <p className="mt-5 text-sm text-muted">Загружаем варианты…</p> : mockCatalog?.presets.length ? (
+                <div className="mt-5 space-y-2">{mockCatalog.presets.map((preset) => {
+                  const completed = mockCatalog.history.some((item) => item.mode === "preset" && item.variant_label === preset.variant_label && item.status === "submitted");
+                  return <div key={preset.variant_label} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-[#111821] p-3">
+                    <div className="min-w-0"><p className="truncate text-sm font-bold">{preset.variant_label}</p><p className="mt-1 text-[11px] text-muted">{preset.numbers_count} номеров · {preset.tasks_count} заданий</p></div>
+                    <div className="flex shrink-0 items-center gap-2">{completed && <CheckCircle2 size={18} className="text-lime" aria-label="Пройден" />}<button disabled={mockBusy} onClick={() => startMockExam("preset", preset.variant_label)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold hover:border-lime/40 disabled:opacity-50">Начать</button></div>
+                  </div>;
+                })}</div>
+              ) : <p className="mt-5 text-sm text-muted">Готовые наборы появятся, когда задания будут размечены общей меткой варианта.</p>}
+            </article>
+          </div>
+          {mockCatalog?.notice && <p className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-4 text-xs leading-5 text-muted">{mockCatalog.notice}</p>}
+          <div className="mt-8">
+            <div className="flex items-end justify-between gap-3"><div><h3 className="text-lg font-extrabold">История пробников</h3><p className="mt-1 text-xs text-muted">Завершённые варианты отмечены галочкой</p></div><span className="text-xs text-muted">{mockCatalog?.history.length ?? 0} попыток</span></div>
+            {mockCatalog?.history.length ? <div className="mt-4 space-y-2">{mockCatalog.history.map((item) => (
+              <Link key={item.id} href={`/mock-exams/${item.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-panel p-4 transition hover:border-white/20">
+                <div className="flex items-center gap-3">{item.status === "submitted" ? <CheckCircle2 size={19} className="text-lime" /> : <ClipboardCheck size={19} className="text-muted" />}<div><p className="text-sm font-bold">{item.variant_label || (item.mode === "bank_mix" ? "Сборный вариант из банка" : "Пробный вариант")}</p><p className="mt-1 text-[11px] text-muted">{new Date(item.created_at).toLocaleString("ru-RU")} · {item.status === "submitted" ? "Завершён" : "Не завершён"}</p></div></div>
+                <div className="text-right"><p className="text-sm font-bold tabular-nums">{item.status === "submitted" && item.score !== null ? `${item.score} / ${item.max_score ?? "—"} баллов` : "Продолжить"}</p>{item.pending_review_count > 0 && <p className="mt-1 text-[11px] text-amber-300">Ожидает проверки: {item.pending_review_count}</p>}</div>
+              </Link>
+            ))}</div> : <p className="mt-4 rounded-xl border border-white/[0.07] bg-panel p-5 text-sm text-muted">Ты ещё не проходил пробные варианты по этому предмету.</p>}
+          </div>
+        </section>
       </div>
     </main>
   );
