@@ -73,6 +73,9 @@ jobs:
               "/api/assignments",
               "/api/assignments/{assignment_id}/start",
               "/api/assignments/{assignment_id}/submit",
+              "/api/mock-exams/{subject_code}",
+              "/api/mock-exams/{subject_code}/generate",
+              "/api/mock-exams/attempts/{attempt_id}/submit",
           }
 
           registered_paths = set(app.openapi()["paths"])
