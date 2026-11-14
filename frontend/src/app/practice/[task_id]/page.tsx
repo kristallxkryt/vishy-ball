@@ -104,7 +104,7 @@ export default function PracticePage() {
 
   return (
     <main className="min-h-screen bg-ink text-white">
-      <header className="border-b border-white/[0.07] bg-[#0e1411]">
+      <header className="border-b border-white/[0.07] bg-[#10151c]">
         <div className="mx-auto flex h-[76px] max-w-[1000px] items-center justify-between px-5 sm:px-8">
           <Link href="/dashboard" className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime text-ink"><GraduationCap size={22} /></span>
@@ -143,7 +143,7 @@ export default function PracticePage() {
                 {normalizedOptions.map((option) => {
                   const active = selected.includes(option.id);
                   return (
-                    <button key={option.id} type="button" onClick={() => toggleOption(option.id)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${active ? "border-lime/50 bg-lime/[0.08] text-white" : "border-white/10 bg-[#101713] text-white/80 hover:border-white/20"}`}>
+                    <button key={option.id} type="button" onClick={() => toggleOption(option.id)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${active ? "border-lime/50 bg-lime/[0.08] text-white" : "border-white/10 bg-[#171e27] text-white/80 hover:border-white/20"}`}>
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-${isMultipleChoice ? "md" : "full"} border ${active ? "border-lime bg-lime text-ink" : "border-white/25"}`}>{active ? <CheckCircle2 size={14} /> : null}</span>
                       {option.label}
                     </button>
@@ -155,7 +155,7 @@ export default function PracticePage() {
                 <label htmlFor="answer" className="mb-2 block text-sm font-bold">
                   {isStructured ? "Ответ в формате JSON" : "Твой ответ"}
                 </label>
-                <textarea id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)} rows={isStructured ? 5 : 3} placeholder={isStructured ? "Введи структуру ответа согласно условию…" : "Введи ответ здесь…"} className="w-full rounded-2xl border border-white/10 bg-[#101713] p-4 text-sm leading-6 outline-none transition placeholder:text-muted focus:border-lime/50" />
+                <textarea id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)} rows={isStructured ? 5 : 3} placeholder={isStructured ? "Введи структуру ответа согласно условию…" : "Введи ответ здесь…"} className="w-full rounded-2xl border border-white/10 bg-[#171e27] p-4 text-sm leading-6 outline-none transition placeholder:text-muted focus:border-lime/50" />
                 {isStructured && <p className="mt-2 text-xs text-muted">Для заданий на сопоставление и порядок backend ожидает структурированный ответ. Введи корректный JSON.</p>}
               </div>
             )}
@@ -164,7 +164,7 @@ export default function PracticePage() {
 
             <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] pt-6">
               <p className="inline-flex items-center gap-2 text-xs text-muted"><Target size={15} className="text-lime" /> Ответ будет сохранён в твоей статистике</p>
-              <button onClick={submitAnswer} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-lime px-5 py-3 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-not-allowed disabled:opacity-60">
+              <button onClick={submitAnswer} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-lime px-5 py-3 text-sm font-black text-ink transition hover:bg-[#e1e5eb] disabled:cursor-not-allowed disabled:opacity-60">
                 <Send size={16} /> {submitting ? "Проверяем…" : "Проверить ответ"}
               </button>
             </div>
@@ -176,7 +176,7 @@ export default function PracticePage() {
                 {result.hint && <p className="mt-3 text-sm leading-6 text-muted">Подсказка: {result.hint}</p>}
                 {result.explanation && <p className="mt-3 text-sm leading-6 text-muted">Решение: {result.explanation}</p>}
                 {result.status === "pending_review" && <p className="mt-2 text-sm text-muted">Ответ ожидает ручной проверки.</p>}
-                <button onClick={() => { setAnswer(""); setSelected([]); setResult(null); }} className="mt-4 text-sm font-bold text-lime hover:text-[#d5ff86]">Попробовать ещё раз</button>
+                <button onClick={() => { setAnswer(""); setSelected([]); setResult(null); }} className="mt-4 text-sm font-bold text-lime hover:text-[#e1e5eb]">Попробовать ещё раз</button>
               </div>
             )}
           </section>
