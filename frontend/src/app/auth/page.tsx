@@ -19,16 +19,26 @@ function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
     try {
-      if (mode === "register") {
+      if (mode === "register" && !verificationStep) {
         await apiRequest("/api/auth/register", {
           method: "POST",
           body: JSON.stringify({ username, email, password, role }),
+        });
+        setVerificationStep(true);
+        return;
+      }
+      if (mode === "register" && verificationStep) {
+        await apiRequest("/api/auth/register/verify", {
+          method: "POST",
+          body: JSON.stringify({ email, code: verificationCode }),
         });
       }
       const result = await apiRequest<LoginResponse>("/api/auth/login", {
