@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookOpen, Check, ChevronDown, ClipboardList, RefreshCw, Send, Users } from "lucide-react";
-import { apiRequest, ApiUser } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 
 type ClassItem = { id: number; name: string; subject_code: string; subject_name: string; is_active: boolean; members_count?: number };
 type TaskItem = { id: number; subject_code: string; topic: string; question: string; exam_number: number | null; variant_label: string | null; task_type: string; difficulty: string | null };
