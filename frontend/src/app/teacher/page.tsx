@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, Check, ChevronDown, ClipboardList, RefreshCw, Send, Users } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ClipboardList, RefreshCw, Send, Users } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 
 type ClassItem = { id: number; name: string; subject_code: string; subject_name: string; is_active: boolean; members_count?: number };
