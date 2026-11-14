@@ -173,9 +173,15 @@ export default function AdminPage() {
                 <div><p className="eyebrow">СОСТОЯНИЕ ПЛАТФОРМЫ</p><h2 className="mt-2 text-3xl font-black">Общая картина</h2><p className="mt-2 text-sm text-muted">Данные рассчитаны по существующим аккаунтам и проверенным попыткам.</p></div>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {[
-                    ["Пользователи",overview.users.total,Users],["Ученики",overview.users.students,GraduationCap],["Учителя",overview.users.teachers,ClipboardList],["Активные ученики",overview.users.active_students,Activity],
-                    ["Попытки",overview.learning.total_attempts,BookOpen],["Точность",overview.learning.accuracy_percent+"%",TargetIcon],["Задания в банке",overview.learning.available_tasks,BookOpen],["Ожидают проверки",overview.reviews.pending,AlertTriangle],
-                  ].map(([label,value,Icon]:any)=><article key={label} className={panelClass}><div className="flex items-center justify-between text-xs font-semibold text-muted">{label}<Icon size={18} className="text-lime"/></div><p className="mt-5 text-3xl font-black tabular-nums">{value}</p></article>)}
+                    { label: "Пользователи", value: overview.users.total, icon: Users },
+                    { label: "Ученики", value: overview.users.students, icon: GraduationCap },
+                    { label: "Учителя", value: overview.users.teachers, icon: ClipboardList },
+                    { label: "Активные ученики", value: overview.users.active_students, icon: Activity },
+                    { label: "Попытки", value: overview.learning.total_attempts, icon: BookOpen },
+                    { label: "Точность", value: `${overview.learning.accuracy_percent}%`, icon: Activity },
+                    { label: "Задания в банке", value: overview.learning.available_tasks, icon: BookOpen },
+                    { label: "Ожидают проверки", value: overview.reviews.pending, icon: AlertTriangle },
+                  ].map(({ label, value, icon: Icon }) => <article key={label} className={panelClass}><div className="flex items-center justify-between text-xs font-semibold text-muted">{label}<Icon size={18} className="text-lime"/></div><p className="mt-5 text-3xl font-black tabular-nums">{value}</p></article>)}
                 </div>
                 <div className="grid gap-5 xl:grid-cols-2">
                   <section className={panelClass}><div className="mb-5 flex items-center justify-between"><h3 className="font-extrabold">Рейтинг учеников</h3><span className="text-xs text-muted">По точности</span></div><div className="space-y-3">{students.map((s)=><div key={s.user_id} className="flex items-center gap-3 border-b border-white/[0.06] pb-3 last:border-0"><span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] text-xs font-black text-lime">{s.rank}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{s.username}</p><p className="text-xs text-muted">{s.total_attempts} ответов</p></div><span className="text-sm font-extrabold tabular-nums">{s.accuracy_percent}%</span></div>)}{!students.length&&<p className="text-sm text-muted">Пока нет проверенных попыток.</p>}</div></section>
@@ -195,4 +201,3 @@ export default function AdminPage() {
   );
 }
 
-function TargetIcon({size=18,className=""}:{size?:number;className?:string}) { return <Activity size={size} className={className}/>; }
