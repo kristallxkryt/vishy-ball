@@ -9,9 +9,6 @@ import hmac
 import os
 import secrets
 import sqlite3
-import json
-import smtplib
-from email.message import EmailMessage
 
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -81,35 +78,6 @@ def init_auth_tables():
             )
         """)
 
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS pending_registrations (
-                email TEXT PRIMARY KEY COLLATE NOCASE,
-                username TEXT NOT NULL COLLATE NOCASE,
-                password_hash TEXT NOT NULL,
-                salt TEXT NOT NULL,
-                role TEXT NOT NULL,
-                code_hash TEXT NOT NULL,
-                expires_at TEXT NOT NULL,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS account_email_codes (
-                user_id INTEGER NOT NULL,
-                purpose TEXT NOT NULL,
-                target_email TEXT,
-                code_hash TEXT NOT NULL,
-                payload_json TEXT,
-                expires_at TEXT NOT NULL,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                PRIMARY KEY (user_id, purpose),
-                FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE CASCADE
-            )
-        """)
-
         columns = {
             row["name"]
             for row in conn.execute(
@@ -127,12 +95,6 @@ def init_auth_tables():
             conn.execute("""
                 ALTER TABLE auth_users
                 ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
-            """)
-
-        if "email_verified" not in columns:
-            conn.execute("""
-                ALTER TABLE auth_users
-                ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1
             """)
 
         conn.execute("""
@@ -196,92 +158,6 @@ class LoginRequest(BaseModel):
     )
 
 
-class VerifyRegistrationRequest(BaseModel):
-    email: EmailStr
-    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
-
-
-class ResendRegistrationRequest(BaseModel):
-    email: EmailStr
-
-
-class EmailChangeRequest(BaseModel):
-    new_email: EmailStr
-
-
-class PasswordChangeRequest(BaseModel):
-    current_password: str = Field(min_length=8, max_length=128)
-    new_password: str = Field(min_length=8, max_length=128)
-
-
-class ConfirmCodeRequest(BaseModel):
-    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _code_hash(code: str) -> str:
-    # Slow derivation makes a database leak much harder to brute-force offline.
-    return hashlib.pbkdf2_hmac(
-        "sha256",
-        code.encode("utf-8"),
-        b"vishy-ball-email-verification-v1",
-        ITERATIONS
-    ).hex()
-
-
-def _new_code() -> str:
-    return f"{secrets.randbelow(1_000_000):06d}"
-
-
-def _expires_at() -> str:
-    return (_now() + timedelta(minutes=10)).isoformat()
-
-
-def _send_email_code(recipient: str, subject: str, purpose_text: str, code: str):
-    host = os.getenv("SMTP_HOST", "").strip()
-    username = os.getenv("SMTP_USER", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    sender = os.getenv("SMTP_FROM", "").strip() or username
-    if not host or not sender:
-        raise HTTPException(status_code=503, detail="Отправка писем не настроена. Добавьте SMTP-настройки в переменные окружения.")
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = sender
-    message["To"] = recipient
-    message.set_content(
-        f"Здравствуйте!\n\n{purpose_text}\n\nВаш код подтверждения: {code}\n"
-        "Код действует 10 минут. Никому не сообщайте его.\n"
-        "Если вы не запрашивали это действие, проигнорируйте письмо."
-    )
-    try:
-        port = int(os.getenv("SMTP_PORT", "587"))
-        with smtplib.SMTP(host, port, timeout=15) as server:
-            if os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes"}:
-                server.starttls()
-            if username:
-                server.login(username, password)
-            server.send_message(message)
-    except (OSError, smtplib.SMTPException, ValueError) as exc:
-        raise HTTPException(status_code=503, detail="Не удалось отправить письмо. Проверьте SMTP-настройки.") from exc
-
-
-def _verify_stored_code(row, code: str):
-    if row is None:
-        raise HTTPException(status_code=400, detail="Код не найден. Запросите новый.")
-    expires = datetime.fromisoformat(row["expires_at"])
-    if expires.tzinfo is None:
-        expires = expires.replace(tzinfo=timezone.utc)
-    if expires <= _now():
-        raise HTTPException(status_code=400, detail="Срок действия кода истёк. Запросите новый.")
-    if row["attempts"] >= 5:
-        raise HTTPException(status_code=429, detail="Слишком много попыток. Запросите новый код.")
-    if not hmac.compare_digest(row["code_hash"], _code_hash(code)):
-        raise HTTPException(status_code=400, detail="Неверный код подтверждения.")
-
-
 # =========================================================
 # SESSION MANAGEMENT
 # =========================================================
@@ -319,130 +195,59 @@ def create_session(user_id: int) -> str:
 # REGISTRATION
 # =========================================================
 
-@router.post("/register", status_code=202)
+@router.post("/register", status_code=201)
 def register(data: RegisterRequest):
     username = data.username.strip()
     email = str(data.email).strip().lower()
     role = data.role
 
-    with get_connection() as conn:
-        conn.execute(
-            "DELETE FROM pending_registrations WHERE expires_at <= ?",
-            (_now().isoformat(),)
-        )
-        existing = conn.execute(
-            """
-            SELECT 1 FROM auth_users
-            WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
-            """,
-            (username, email)
-        ).fetchone()
-        pending = conn.execute(
-            """
-            SELECT 1 FROM pending_registrations
-            WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
-            """,
-            (username, email)
-        ).fetchone()
-    if existing or pending:
-        raise HTTPException(status_code=409, detail="Такой логин или email уже зарегистрирован либо ожидает подтверждения.")
-
     salt = os.urandom(16)
-    password_hash = hash_password(data.password, salt)
-    code = _new_code()
-    _send_email_code(
-        email,
-        "Подтверждение регистрации — Высший балл",
-        "Для завершения регистрации на платформе «Высший балл» введите этот код:",
-        code
+
+    password_hash = hash_password(
+        data.password,
+        salt
     )
-    with get_connection() as conn:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO pending_registrations
-            (email, username, password_hash, salt, role, code_hash, expires_at, attempts, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-            """,
-            (
-                email, username, password_hash, salt.hex(), role,
-                _code_hash(code), _expires_at(), _now().isoformat()
-            )
-        )
-    return {"message": "Код подтверждения отправлен на указанную почту.", "verification_required": True}
 
-
-@router.post("/register/resend")
-def resend_registration_code(data: ResendRegistrationRequest):
-    email = str(data.email).strip().lower()
-    with get_connection() as conn:
-        pending = conn.execute(
-            "SELECT created_at FROM pending_registrations WHERE email = ? COLLATE NOCASE",
-            (email,)
-        ).fetchone()
-    if pending is None:
-        raise HTTPException(status_code=404, detail="Незавершённая регистрация не найдена. Начните регистрацию заново.")
-    created = datetime.fromisoformat(pending["created_at"])
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    if (_now() - created).total_seconds() < 60:
-        raise HTTPException(status_code=429, detail="Повторный код можно запросить через минуту.")
-    code = _new_code()
-    _send_email_code(
-        email,
-        "Новый код регистрации — Высший балл",
-        "Введите этот код, чтобы завершить регистрацию:",
-        code
-    )
-    with get_connection() as conn:
-        conn.execute(
-            """
-            UPDATE pending_registrations
-            SET code_hash = ?, expires_at = ?, attempts = 0, created_at = ?
-            WHERE email = ? COLLATE NOCASE
-            """,
-            (_code_hash(code), _expires_at(), _now().isoformat(), email)
-        )
-    return {"message": "Новый код отправлен на почту."}
-
-
-@router.post("/register/verify", status_code=201)
-def verify_registration(data: VerifyRegistrationRequest):
-    email = str(data.email).strip().lower()
-    with get_connection() as conn:
-        pending = conn.execute(
-            "SELECT * FROM pending_registrations WHERE email = ? COLLATE NOCASE",
-            (email,)
-        ).fetchone()
-        try:
-            _verify_stored_code(pending, data.code)
-        except HTTPException as exc:
-            if pending is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
-                conn.execute(
-                    "UPDATE pending_registrations SET attempts = attempts + 1 WHERE email = ?",
-                    (email,)
+    try:
+        with get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO auth_users (
+                    username,
+                    email,
+                    password_hash,
+                    salt,
+                    created_at,
+                    role,
+                    is_active
                 )
-                conn.commit()
-            raise
-        cursor = conn.execute(
-            """
-            INSERT INTO auth_users (
-                username, email, password_hash, salt, created_at,
-                role, is_active, email_verified
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+                """,
+                (
+                    username,
+                    email,
+                    password_hash,
+                    salt.hex(),
+                    datetime.now(timezone.utc).isoformat(),
+                    role
+                )
             )
-            VALUES (?, ?, ?, ?, ?, ?, 1, 1)
-            """,
-            (
-                pending["username"], email, pending["password_hash"],
-                pending["salt"], _now().isoformat(), pending["role"]
-            )
+
+            user_id = cursor.lastrowid
+
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Такой логин или email уже зарегистрирован."
         )
-        user_id = cursor.lastrowid
-        conn.execute("DELETE FROM pending_registrations WHERE email = ?", (email,))
+
     return {
-        "message": "Почта подтверждена, аккаунт создан.",
+        "message": "Аккаунт успешно создан!",
         "user": {
-            "id": user_id, "username": pending["username"],
-            "email": email, "role": pending["role"]
+            "id": user_id,
+            "username": username,
+            "email": email,
+            "role": role
         }
     }
 
@@ -465,8 +270,7 @@ def login(data: LoginRequest):
                 password_hash,
                 salt,
                 role,
-                is_active,
-                email_verified
+                is_active
             FROM auth_users
             WHERE username = ? COLLATE NOCASE
                OR email = ? COLLATE NOCASE
@@ -500,12 +304,6 @@ def login(data: LoginRequest):
         raise HTTPException(
             status_code=403,
             detail="Ваш аккаунт заблокирован."
-        )
-
-    if not user["email_verified"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Сначала подтвердите адрес электронной почты."
         )
 
     token = create_session(user["id"])
@@ -660,175 +458,6 @@ def get_me(
     current_user: dict = Depends(get_current_user)
 ):
     return current_user
-
-
-# =========================================================
-# ACCOUNT EMAIL AND PASSWORD CHANGES
-# =========================================================
-
-def _current_password_matches(user_id: int, password: str) -> bool:
-    with get_connection() as conn:
-        user = conn.execute(
-            "SELECT password_hash, salt FROM auth_users WHERE id = ?",
-            (user_id,)
-        ).fetchone()
-    if user is None:
-        return False
-    candidate = hash_password(password, bytes.fromhex(user["salt"]))
-    return hmac.compare_digest(candidate, user["password_hash"])
-
-
-def _check_account_code_cooldown(user_id: int, purpose: str):
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT created_at FROM account_email_codes WHERE user_id = ? AND purpose = ?",
-            (user_id, purpose)
-        ).fetchone()
-    if row is None:
-        return
-    created = datetime.fromisoformat(row["created_at"])
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    if (_now() - created).total_seconds() < 60:
-        raise HTTPException(status_code=429, detail="Новый код можно запросить через минуту.")
-
-
-def _store_account_code(user_id: int, purpose: str, target_email: str | None, payload: dict, code: str):
-    with get_connection() as conn:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO account_email_codes
-            (user_id, purpose, target_email, code_hash, payload_json, expires_at, attempts, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-            """,
-            (
-                user_id, purpose, target_email, _code_hash(code),
-                json.dumps(payload, ensure_ascii=False), _expires_at(), _now().isoformat()
-            )
-        )
-
-
-@router.post("/email-change/request")
-def request_email_change(
-    data: EmailChangeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    new_email = str(data.new_email).strip().lower()
-    if new_email == current_user["email"].lower():
-        raise HTTPException(status_code=400, detail="Это уже текущий адрес почты.")
-    _check_account_code_cooldown(current_user["id"], "email_change")
-    with get_connection() as conn:
-        duplicate = conn.execute(
-            "SELECT 1 FROM auth_users WHERE email = ? COLLATE NOCASE",
-            (new_email,)
-        ).fetchone()
-    if duplicate:
-        raise HTTPException(status_code=409, detail="Этот адрес уже используется другим аккаунтом.")
-    code = _new_code()
-    _send_email_code(
-        new_email,
-        "Подтверждение новой почты — Высший балл",
-        "Чтобы изменить адрес электронной почты аккаунта, введите этот код:",
-        code
-    )
-    _store_account_code(current_user["id"], "email_change", new_email, {}, code)
-    return {"message": "Код отправлен на новый адрес почты."}
-
-
-@router.post("/email-change/confirm")
-def confirm_email_change(
-    data: ConfirmCodeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM account_email_codes WHERE user_id = ? AND purpose = 'email_change'",
-            (current_user["id"],)
-        ).fetchone()
-        try:
-            _verify_stored_code(row, data.code)
-        except HTTPException as exc:
-            if row is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
-                conn.execute(
-                    "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'email_change'",
-                    (current_user["id"],)
-                )
-                conn.commit()
-            raise
-        new_email = row["target_email"]
-        duplicate = conn.execute(
-            "SELECT 1 FROM auth_users WHERE email = ? COLLATE NOCASE AND id != ?",
-            (new_email, current_user["id"])
-        ).fetchone()
-        if duplicate:
-            raise HTTPException(status_code=409, detail="Этот адрес уже используется другим аккаунтом.")
-        conn.execute(
-            "UPDATE auth_users SET email = ?, email_verified = 1 WHERE id = ?",
-            (new_email, current_user["id"])
-        )
-        conn.execute(
-            "DELETE FROM account_email_codes WHERE user_id = ? AND purpose = 'email_change'",
-            (current_user["id"],)
-        )
-    return {"message": "Адрес электронной почты успешно изменён.", "user": {**current_user, "email": new_email}}
-
-
-@router.post("/password-change/request")
-def request_password_change(
-    data: PasswordChangeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    if not _current_password_matches(current_user["id"], data.current_password):
-        raise HTTPException(status_code=400, detail="Текущий пароль указан неверно.")
-    _check_account_code_cooldown(current_user["id"], "password_change")
-    if hmac.compare_digest(data.current_password, data.new_password):
-        raise HTTPException(status_code=400, detail="Новый пароль должен отличаться от текущего.")
-    code = _new_code()
-    _send_email_code(
-        current_user["email"],
-        "Подтверждение смены пароля — Высший балл",
-        "Чтобы изменить пароль аккаунта, введите этот код:",
-        code
-    )
-    salt = os.urandom(16)
-    payload = {"password_hash": hash_password(data.new_password, salt), "salt": salt.hex()}
-    _store_account_code(current_user["id"], "password_change", None, payload, code)
-    return {"message": "Код отправлен на текущую почту."}
-
-
-@router.post("/password-change/confirm")
-def confirm_password_change(
-    data: ConfirmCodeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM account_email_codes WHERE user_id = ? AND purpose = 'password_change'",
-            (current_user["id"],)
-        ).fetchone()
-        try:
-            _verify_stored_code(row, data.code)
-        except HTTPException as exc:
-            if row is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
-                conn.execute(
-                    "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'password_change'",
-                    (current_user["id"],)
-                )
-                conn.commit()
-            raise
-        payload = json.loads(row["payload_json"] or "{}")
-        if not payload.get("password_hash") or not payload.get("salt"):
-            raise HTTPException(status_code=400, detail="Запрос смены пароля повреждён. Запросите код повторно.")
-        conn.execute(
-            "UPDATE auth_users SET password_hash = ?, salt = ? WHERE id = ?",
-            (payload["password_hash"], payload["salt"], current_user["id"])
-        )
-        conn.execute("DELETE FROM auth_sessions WHERE user_id = ?", (current_user["id"],))
-        conn.execute(
-            "DELETE FROM account_email_codes WHERE user_id = ? AND purpose = 'password_change'",
-            (current_user["id"],)
-        )
-    return {"message": "Пароль изменён. Войдите в аккаунт с новым паролем."}
 
 
 # =========================================================
