@@ -94,7 +94,7 @@ export default function HomePage() {
         </nav>
         <div className="flex items-center gap-3">
           {!authChecked ? null : isAuthenticated ? (
-            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#e1e5eb]">
               <UserRound size={16} /> Личный кабинет
             </Link>
           ) : (
@@ -102,7 +102,7 @@ export default function HomePage() {
               <Link href="/auth" className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:text-white sm:block">
                 Войти
               </Link>
-              <Link href="/auth?mode=register" className="rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
+              <Link href="/auth?mode=register" className="rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#e1e5eb]">
                 Начать бесплатно <ArrowRight className="ml-1 inline" size={15} />
               </Link>
             </>
@@ -123,7 +123,7 @@ export default function HomePage() {
             Понятная система подготовки к ЕГЭ: практикуйся, разбирай ошибки и следи за тем, как растёт твой результат.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link href="/auth?mode=register" className="group inline-flex items-center gap-3 rounded-2xl bg-lime px-6 py-4 text-sm font-black text-ink shadow-glow transition hover:-translate-y-0.5 hover:bg-[#d5ff86]">
+            <Link href="/auth?mode=register" className="group inline-flex items-center gap-3 rounded-2xl bg-lime px-6 py-4 text-sm font-black text-ink shadow-glow transition hover:-translate-y-0.5 hover:bg-[#e1e5eb]">
               Создать аккаунт <ArrowRight size={17} className="transition group-hover:translate-x-1" />
             </Link>
             <a href="#features" className="inline-flex items-center gap-2 rounded-2xl border border-white/10 px-6 py-4 text-sm font-bold text-white/75 transition hover:border-white/25 hover:text-white">
@@ -180,7 +180,7 @@ export default function HomePage() {
             </div>
             <p className="mt-4 text-center text-[10px] text-muted">Иллюстрация интерфейса · пример данных</p>
           </div>
-          <div className="absolute -bottom-7 -left-8 hidden rounded-2xl border border-white/10 bg-[#17211d] px-4 py-3 shadow-xl sm:block">
+          <div className="absolute -bottom-7 -left-8 hidden rounded-2xl border border-white/10 bg-[#171e27] px-4 py-3 shadow-xl sm:block">
             <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-lime/10 text-lime"><ChartNoAxesCombined size={18} /></span><div><p className="text-xs font-bold">Прогресс растёт</p><p className="text-[10px] text-muted">Шаг за шагом</p></div></div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function HomePage() {
             <p className="eyebrow">Твой следующий шаг</p>
             <h2 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">Большой результат начинается с одного задания.</h2>
             <p className="mt-5 max-w-xl leading-7 text-muted">Создай аккаунт, выбери предмет и начни двигаться к своей цели — спокойно и последовательно.</p>
-            <Link href="/auth?mode=register" className="mt-8 inline-flex items-center gap-3 rounded-2xl bg-lime px-6 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86]">Начать бесплатно <ArrowRight size={17} /></Link>
+            <Link href="/auth?mode=register" className="mt-8 inline-flex items-center gap-3 rounded-2xl bg-lime px-6 py-4 text-sm font-black text-ink transition hover:bg-[#e1e5eb]">Начать бесплатно <ArrowRight size={17} /></Link>
           </div>
         </div>
       </section>
