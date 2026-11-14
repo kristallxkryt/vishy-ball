@@ -136,7 +136,7 @@ class RegisterRequest(BaseModel):
         pattern=r"^[A-Za-zА-Яа-яЁё0-9_]+$"
     )
 
-    email: EmailStr
+    email: EmailStr | None = None
 
     password: str = Field(
         min_length=8,
@@ -198,7 +198,7 @@ def create_session(user_id: int) -> str:
 @router.post("/register", status_code=201)
 def register(data: RegisterRequest):
     username = data.username.strip()
-    email = str(data.email).strip().lower()
+    email = (str(data.email).strip().lower() if data.email else f"{username.lower()}.{secrets.token_hex(8)}@accounts.invalid")
     role = data.role
 
     salt = os.urandom(16)
@@ -246,7 +246,7 @@ def register(data: RegisterRequest):
         "user": {
             "id": user_id,
             "username": username,
-            "email": email,
+            "email": None if email.endswith("@accounts.invalid") else email,
             "role": role
         }
     }
@@ -316,7 +316,7 @@ def login(data: LoginRequest):
         "user": {
             "id": user["id"],
             "username": user["username"],
-            "email": user["email"],
+            "email": None if user["email"].endswith("@accounts.invalid") else user["email"],
             "role": user["role"]
         }
     }
