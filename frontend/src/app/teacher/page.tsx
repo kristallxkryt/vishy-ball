@@ -155,7 +155,7 @@ export default function TeacherPage() {
             <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">БАНК ЗАДАНИЙ</p><h2 className="mt-2 text-xl font-black">Выбор по типам ЕГЭ</h2></div><span className="text-xs text-muted">{tasks.length} загружено</span></div>
             <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_190px]">
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по условию или теме…" className={fieldClass} />
-              <div className="relative"><select value={numberFilter} onChange={(e) => setNumberFilter(e.target.value)} className={fieldClass}><option value="all">Все номера</option>{numbers.map((number) => <option key={number} value={number}>Задание №{number}</option>}</select><ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" /></div>
+              <div className="relative"><select value={numberFilter} onChange={(e) => setNumberFilter(e.target.value)} className={fieldClass}><option value="all">Все номера</option>{numbers.map((number) => <option key={number} value={number}>Задание №{number}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" /></div>
             </div>
             {!activeClass ? <p className="mt-8 text-center text-sm text-muted">Выбери класс, чтобы загрузить задания его предмета.</p> : !tasks.length && busy ? <p className="mt-8 text-center text-sm text-muted">Загружаем банк…</p> : (
               <div className="mt-6 space-y-7">
