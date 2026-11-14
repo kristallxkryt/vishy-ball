@@ -823,3 +823,94 @@ def test_authored_russian_bank_seed_is_repeatable_and_answers_are_private(tmp_pa
             assert result["score"] == result["max_score"] == 1.0
     finally:
         connection.close()
+
+
+def test_mock_exam_presets_bank_mix_and_persisted_results():
+    with TestClient(app) as client:
+        student = register_and_login(client, "student")
+        suffix = uuid4().hex[:8]
+        topic = f"Пробник {suffix}"
+
+        with get_connection() as connection:
+            for number, label, answer in [
+                (1, "Пробник А", "A"),
+                (2, "Пробник А", "B"),
+                (1, "Пробник Б", "C"),
+                (2, "Пробник Б", "D"),
+            ]:
+                connection.execute(
+                    """
+                    INSERT INTO tasks (
+                        subject_code, topic, question, answer, task_type,
+                        checking_config_json, exam_number, variant_label, is_active
+                    )
+                    VALUES ('russian', ?, ?, ?, 'text', '{}', ?, ?, 1)
+                    """,
+                    (topic, f"Условие {number} {label}", answer, number, label),
+                )
+
+        catalog = client.get(
+            "/api/mock-exams/russian",
+            headers=student["headers"],
+        )
+        assert catalog.status_code == 200, catalog.text
+        catalog_data = catalog.json()
+        assert {item["variant_label"] for item in catalog_data["presets"]} >= {
+            "Пробник А",
+            "Пробник Б",
+        }
+
+        created = client.post(
+            "/api/mock-exams/russian/generate",
+            headers=student["headers"],
+            json={"mode": "preset", "variant_label": "Пробник А"},
+        )
+        assert created.status_code == 201, created.text
+        attempt = created.json()["attempt"]
+        assert [task["exam_number"] for task in attempt["tasks"]] == [1, 2]
+        assert {task["variant_label"] for task in attempt["tasks"]} == {"Пробник А"}
+
+        for task, answer in zip(attempt["tasks"], ["A", "B"]):
+            saved = client.put(
+                f"/api/mock-exams/attempts/{attempt['id']}/answers/{task['id']}",
+                headers=student["headers"],
+                json={"answer": answer},
+            )
+            assert saved.status_code == 200, saved.text
+
+        submitted = client.post(
+            f"/api/mock-exams/attempts/{attempt['id']}/submit",
+            headers=student["headers"],
+        )
+        assert submitted.status_code == 200, submitted.text
+        result = submitted.json()["attempt"]
+        assert result["status"] == "submitted"
+        assert result["answered_count"] == 2
+        assert result["score"] == result["max_score"] == 2.0
+
+        duplicate_submit = client.post(
+            f"/api/mock-exams/attempts/{attempt['id']}/submit",
+            headers=student["headers"],
+        )
+        assert duplicate_submit.status_code == 409
+
+        history = client.get(
+            "/api/mock-exams/russian",
+            headers=student["headers"],
+        )
+        assert any(
+            item["id"] == attempt["id"] and item["status"] == "submitted"
+            for item in history.json()["history"]
+        )
+
+        mixed = client.post(
+            "/api/mock-exams/russian/generate",
+            headers=student["headers"],
+            json={"mode": "bank_mix"},
+        )
+        assert mixed.status_code == 201, mixed.text
+        mixed_tasks = mixed.json()["attempt"]["tasks"]
+        assert [task["exam_number"] for task in mixed_tasks] == [1, 2]
+        assert len({task["exam_number"] for task in mixed_tasks}) == 2
+        assert all(task["variant_label"] is None for task in mixed_tasks)
+
