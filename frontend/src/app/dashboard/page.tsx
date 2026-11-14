@@ -109,7 +109,7 @@ export default function DashboardPage() {
           </div>
         </header>
         <div className="mx-auto max-w-[1280px] px-6 py-9 sm:px-10 sm:py-12">
-          <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow">ТВОЙ ПЛАН НА РЕЗУЛЬТАТ</p><h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Привет, {user?.username || "будущий стобалльник"} 👋</h1><p className="mt-3 text-sm text-muted">Продолжай двигаться вперёд. Каждый ответ имеет значение.</p></div><Link href="#subjects" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink transition hover:bg-[#d5ff86]">Выбрать предмет <ArrowRight size={16} /></Link></div>
+          <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow">ТВОЙ ПЛАН НА РЕЗУЛЬТАТ</p><h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Привет, {user?.username || "будущий стобалльник"} 👋</h1><p className="mt-3 text-sm text-muted">Продолжай двигаться вперёд. Каждый ответ имеет значение.</p></div><Link href="#subjects" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink transition hover:bg-[#e1e5eb]">Выбрать предмет <ArrowRight size={16} /></Link></div>
           {error && <div role="alert" className="mt-7 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>}
           <section id="progress" className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
