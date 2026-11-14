@@ -50,10 +50,14 @@ const subjects = [
 
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("vb_access_token");
-    if (!token) return;
+    if (!token) {
+      setAuthChecked(true);
+      return;
+    }
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
@@ -63,7 +67,7 @@ export default function HomePage() {
         localStorage.removeItem("vb_access_token");
         localStorage.removeItem("vb_user");
       }
-    }).catch(() => setIsAuthenticated(false));
+    }).catch(() => setIsAuthenticated(false)).finally(() => setAuthChecked(true));
   }, []);
 
   return (
@@ -89,7 +93,7 @@ export default function HomePage() {
           <a href="#about" className="transition hover:text-white">О платформе</a>
         </nav>
         <div className="flex items-center gap-3">
-          {isAuthenticated ? (
+          {!authChecked ? null : isAuthenticated ? (
             <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-sm font-extrabold text-ink transition hover:bg-[#d5ff86]">
               <UserRound size={16} /> Личный кабинет
             </Link>
