@@ -157,6 +157,9 @@ export default function SubjectPage() {
           <a href="https://fipi.ru/ege/otkrytyy-bank-zadaniy-ege" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-muted underline decoration-white/20 underline-offset-4 transition hover:text-white">
             Открытый банк ФИПИ <ArrowRight size={13} />
           </a>
+          <a href="https://fipi.ru/ege/demoversii-specifikacii-kodifikatory" target="_blank" rel="noreferrer" className="ml-4 inline-flex items-center gap-2 text-xs font-semibold text-muted underline decoration-white/20 underline-offset-4 transition hover:text-white">
+            Спецификации и кодификаторы <ArrowRight size={13} />
+          </a>
         </div>
 
         {error && (
