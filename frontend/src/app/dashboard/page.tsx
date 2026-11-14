@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight, BookOpen, CheckCircle2, ChevronRight, GraduationCap,
   LayoutDashboard, LogOut, Target, TrendingUp, UserRound, ChevronDown, Settings,
-  Atom, Calculator, Code2, Dna, FlaskConical, Globe, Landmark, Languages, Scale, Sigma,
+  Atom, Calculator, Code2, Dna, FlaskConical, Globe, Landmark, Languages, Scale, Sigma, ClipboardList,
 } from "lucide-react";
 import { apiRequest, ApiUser } from "@/lib/api";
 
@@ -84,7 +84,7 @@ export default function DashboardPage() {
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col border-r border-white/[0.07] bg-[#10151c] px-5 py-7 lg:flex">
         <Link href="/" className="flex items-center gap-3 px-2"><span className="grid h-10 w-10 place-items-center rounded-xl bg-lime text-ink"><GraduationCap size={22} /></span><span className="text-sm font-black">ВЫСШИЙ<span className="text-lime">БАЛЛ</span></span></Link>
         <p className="mb-3 mt-12 px-3 text-[10px] font-black uppercase tracking-[.18em] text-muted">Рабочее пространство</p>
-        <div className="space-y-1"><div className="flex items-center gap-3 rounded-xl bg-lime/10 px-3 py-3 text-sm font-bold text-lime"><LayoutDashboard size={17} /> Обзор</div><a href="#subjects" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><BookOpen size={17} /> Предметы</a><a href="#progress" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><TrendingUp size={17} /> Мой прогресс</a></div>
+        <div className="space-y-1"><div className="flex items-center gap-3 rounded-xl bg-lime/10 px-3 py-3 text-sm font-bold text-lime"><LayoutDashboard size={17} /> Обзор</div><a href="#subjects" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><BookOpen size={17} /> Предметы</a><a href="#progress" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><TrendingUp size={17} /> Мой прогресс</a></div>{user?.role === "teacher" && <Link href="/teacher" className="mt-2 flex items-center gap-3 rounded-xl border border-lime/20 bg-lime/[0.06] px-3 py-3 text-sm font-bold text-lime transition hover:bg-lime/10"><ClipboardList size={17} /> Конструктор вариантов</Link>}
         <div className="mt-auto rounded-2xl border border-lime/15 bg-lime/[0.06] p-4"><Target size={20} className="text-lime" /><p className="mt-3 text-sm font-bold">Маленький шаг каждый день</p><p className="mt-1 text-xs leading-5 text-muted">Регулярная практика помогает приблизиться к цели.</p></div>
         <button onClick={logout} className="mt-5 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><LogOut size={17} /> Выйти</button>
       </aside>
