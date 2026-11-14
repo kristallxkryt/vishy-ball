@@ -809,7 +809,7 @@ def test_authored_russian_bank_seed_is_repeatable_and_answers_are_private(tmp_pa
 
             config = json.loads(row["checking_config_json"])
             if row["task_type"] == "text":
-                submitted = config["correct_answer"]
+                submitted = config.get("correct_answer", row["answer"])
             elif row["task_type"] == "single_choice":
                 submitted = config["correct_option_id"]
             elif row["task_type"] == "multiple_choice":
