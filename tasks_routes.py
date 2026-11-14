@@ -201,6 +201,7 @@ class TaskPublic(BaseModel):
     media: list[dict] = []
     exam_number: int | None = None
     variant_label: str | None = None
+    source: str | None = None
 
 
 # --------------------------------------------------
@@ -230,6 +231,7 @@ def task_to_public(row):
         "task_type": row["task_type"],
         "exam_number": row["exam_number"] if "exam_number" in row.keys() else None,
         "variant_label": row["variant_label"] if "variant_label" in row.keys() else None,
+        "source": row["source"] if "source" in row.keys() else None,
         "options": options,
         "media": media,
     }
@@ -558,6 +560,7 @@ def get_tasks(
             task_type,
             options_json,
             media_json,
+            source,
             exam_number,
             variant_label
 
