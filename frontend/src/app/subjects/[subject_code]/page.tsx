@@ -33,6 +33,7 @@ type Task = {
   task_type: string;
   exam_number: number | null;
   variant_label: string | null;
+  source: string | null;
   options: unknown[];
   media: Array<{ url?: string; alt?: string; type?: string }>;
 };
@@ -289,7 +290,9 @@ export default function SubjectPage() {
                             <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-muted">{difficultyLabels[task.difficulty || ""] || "Без уровня"}</span>
                           </div>
                           <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-white/90">{task.question}</p>
-                          <div className="mt-5 flex justify-end">
+                          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                            {task.source?.startsWith("https://") ? <a href={task.source} target="_blank" rel="noreferrer" className="text-xs font-semibold text-muted underline decoration-white/20 underline-offset-4 hover:text-white">Источник задания</a> : <span />}
+
                             <Link href={`/practice/${task.id}?subject=${encodeURIComponent(subjectCode)}&topic=${encodeURIComponent(selectedTopic || "")}`} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-black text-ink transition hover:bg-white">
                               Решить <ArrowRight size={15} />
                             </Link>
