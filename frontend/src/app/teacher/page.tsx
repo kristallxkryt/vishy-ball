@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, Check, ChevronDown, ClipboardList, Plus, RefreshCw, Send, Users } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronDown, ClipboardList, RefreshCw, Send, Users } from "lucide-react";
 import { apiRequest, ApiUser } from "@/lib/api";
 
 type ClassItem = { id: number; name: string; subject_code: string; subject_name: string; is_active: boolean; members_count?: number };
@@ -15,7 +15,6 @@ const typeNames: Record<string, string> = { text: "Краткий ответ", s
 
 export default function TeacherPage() {
   const router = useRouter();
-  const [user, setUser] = useState<ApiUser | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -42,7 +41,6 @@ export default function TeacherPage() {
       apiRequest<{ classes: ClassItem[] }>("/api/classes", {}, auth),
     ]).then(([me, data]) => {
       if (me.role !== "teacher") { router.replace(me.role === "admin" ? "/admin" : "/dashboard"); return; }
-      setUser(me);
       setClasses(data.classes.filter((item) => item.is_active));
       if (data.classes.length) setClassId(String(data.classes.find((item) => item.is_active)?.id ?? ""));
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "Не удалось загрузить классы."))
