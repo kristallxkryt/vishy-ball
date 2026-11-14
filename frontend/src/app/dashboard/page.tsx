@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight, BookOpen, CheckCircle2, ChevronRight, GraduationCap,
   LayoutDashboard, LogOut, Target, TrendingUp, UserRound, ChevronDown, Settings,
+  Atom, Calculator, Code2, Dna, FlaskConical, Globe, Landmark, Languages, Scale, Sigma,
 } from "lucide-react";
 import { apiRequest, ApiUser } from "@/lib/api";
 
@@ -22,10 +23,12 @@ type Stats = {
   subjects: Array<{ subject_code: string; total_answered: number; accuracy_percent: number }>;
 };
 
-const subjectMarks: Record<string, string> = {
-  russian: "РУ", "math-profile": "МП", "math-basic": "МБ", informatics: "ИН",
-  physics: "ФИ", chemistry: "ХИ", biology: "БИ", history: "ИС",
-  "social-studies": "ОБ", literature: "ЛИ", geography: "ГЕ", english: "АН",
+const subjectIcons: Record<string, typeof BookOpen> = {
+  russian: BookOpen, "math-profile": Sigma, "math-basic": Calculator,
+  informatics: Code2, physics: Atom, chemistry: FlaskConical, biology: Dna,
+  history: Landmark, "social-studies": Scale, literature: BookOpen,
+  geography: Globe, english: Languages, german: Languages,
+  french: Languages, spanish: Languages, chinese: Languages,
 };
 
 export default function DashboardPage() {
@@ -74,7 +77,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-ink">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col border-r border-white/[0.07] bg-[#0e1411] px-5 py-7 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col border-r border-white/[0.07] bg-[#10151c] px-5 py-7 lg:flex">
         <Link href="/" className="flex items-center gap-3 px-2"><span className="grid h-10 w-10 place-items-center rounded-xl bg-lime text-ink"><GraduationCap size={22} /></span><span className="text-sm font-black">ВЫСШИЙ<span className="text-lime">БАЛЛ</span></span></Link>
         <p className="mb-3 mt-12 px-3 text-[10px] font-black uppercase tracking-[.18em] text-muted">Рабочее пространство</p>
         <div className="space-y-1"><div className="flex items-center gap-3 rounded-xl bg-lime/10 px-3 py-3 text-sm font-bold text-lime"><LayoutDashboard size={17} /> Обзор</div><a href="#subjects" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><BookOpen size={17} /> Предметы</a><a href="#progress" className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition hover:bg-white/5 hover:text-white"><TrendingUp size={17} /> Мой прогресс</a></div>
@@ -91,7 +94,7 @@ export default function DashboardPage() {
               <UserRound size={18} /><ChevronDown size={14} className={`transition ${profileMenuOpen ? "rotate-180" : ""}`} />
             </button>
             {profileMenuOpen && (
-              <div className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#151e19] p-2 shadow-2xl">
+              <div className="absolute right-0 top-12 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#171e27] p-2 shadow-2xl">
                 <Link href="/dashboard" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
                   <LayoutDashboard size={16} className="text-lime" /> Личный кабинет
                 </Link>
@@ -121,17 +124,20 @@ export default function DashboardPage() {
             <div className="flex items-end justify-between"><div><p className="eyebrow">КАТАЛОГ ЕГЭ</p><h2 className="mt-3 text-2xl font-black tracking-tight">Выбери предмет</h2></div><span className="text-xs text-muted">{subjects.length} предметов</span></div>
             {loading ? <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[1,2,3,4,5,6].map((item) => <div key={item} className="h-36 animate-pulse rounded-2xl border border-white/[0.06] bg-panel" />)}</div> : (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {subjects.map((subject, index) => <Link href={`/subjects/${encodeURIComponent(subject.subject_code)}`} key={subject.subject_code} className="group relative isolate min-h-[184px] overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#131c17] p-6 transition duration-300 hover:-translate-y-1 hover:border-lime/30 hover:shadow-[0_18px_50px_-28px_rgba(190,242,100,.28)]">
+                {subjects.map((subject, index) => {
+                  const SubjectIcon = subjectIcons[subject.subject_code] || BookOpen;
+                  return <Link href={`/subjects/${encodeURIComponent(subject.subject_code)}`} key={subject.subject_code} className="group relative isolate min-h-[184px] overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#151c25] p-6 transition duration-300 hover:-translate-y-1 hover:border-lime/30 hover:shadow-[0_18px_50px_-28px_rgba(174,184,197,.20)]">
                   <div className="pointer-events-none absolute -right-10 -top-12 -z-10 h-40 w-40 rounded-full bg-lime/[0.055] blur-3xl transition group-hover:bg-lime/[0.13]" />
                   <div className="flex items-start justify-between">
-                    <span className="grid h-12 w-12 place-items-center rounded-2xl border border-lime/15 bg-lime/[0.08] text-xs font-black tracking-wide text-lime">{subjectMarks[subject.subject_code] || subject.name.slice(0,2).toUpperCase()}</span>
+                    <span className="grid h-12 w-12 place-items-center rounded-2xl border border-lime/15 bg-lime/[0.08] text-lime"><SubjectIcon size={21} strokeWidth={1.8} /></span>
                     <span className="text-[11px] font-bold tabular-nums text-white/20">{String(index + 1).padStart(2, "0")}</span>
                   </div>
                   <div className="mt-7 flex items-end justify-between gap-3">
                     <div><h3 className="text-[17px] font-extrabold tracking-tight text-white transition group-hover:text-lime">{subject.name}</h3><p className="mt-2 text-xs font-medium text-muted">{subject.task_count} заданий <span className="mx-1 text-white/20">·</span> каталог</p></div>
                     <span className="mb-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-white/[0.025] text-muted transition group-hover:border-lime/30 group-hover:bg-lime group-hover:text-ink"><ChevronRight size={17} /></span>
                   </div>
-                </Link>)}
+                </Link>;
+                })}
               </div>
             )}
             {!loading && subjects.length === 0 && <p className="mt-6 rounded-2xl border border-white/[0.07] bg-panel p-6 text-sm text-muted">В каталоге пока нет активных предметов.</p>}
