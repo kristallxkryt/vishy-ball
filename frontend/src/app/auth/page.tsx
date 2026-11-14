@@ -21,6 +21,7 @@ function AuthForm() {
   const [error, setError] = useState("");
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,13 +58,14 @@ function AuthForm() {
 
   async function resendCode() {
     setError("");
+    setStatusMessage("");
     setLoading(true);
     try {
       await apiRequest("/api/auth/register/resend", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setError("Новый код отправлен на почту.");
+      setStatusMessage("Новый код отправлен на почту.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Не удалось отправить код.");
     } finally {
@@ -108,6 +110,7 @@ function AuthForm() {
           )}
           {mode === "login" && <label className="block text-xs font-bold text-white/75">Логин или почта<input required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Логин или email" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>}
           <label className="block text-xs font-bold text-white/75">Пароль<div className="relative mt-2"><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Не менее 8 символов" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 pr-12 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>
+          {statusMessage && <p role="status" className="rounded-xl border border-lime/20 bg-lime/[0.07] px-4 py-3 text-sm text-lime">{statusMessage}</p>}
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p>}
           <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime px-5 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-wait disabled:opacity-60">{loading ? "Подождите..." : mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Отправить код"} {!loading && <ArrowRight size={17} />}</button>
         </form>
