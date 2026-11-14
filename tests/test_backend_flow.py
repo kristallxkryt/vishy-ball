@@ -66,6 +66,60 @@ def register_and_login(client: TestClient, role: str):
     }
 
 
+def test_email_verification_and_account_security_changes():
+    with TestClient(app) as client:
+        account = register_and_login(client, "student")
+        token = account["headers"]["Authorization"].split(" ", 1)[1]
+
+        new_email = f"changed_{uuid4().hex[:10]}@example.com"
+        requested_email = client.post(
+            "/api/auth/email-change/request",
+            headers=account["headers"],
+            json={"new_email": new_email},
+        )
+        assert requested_email.status_code == 200, requested_email.text
+        email_code = SENT_VERIFICATION_CODES[-1]["code"]
+        changed_email = client.post(
+            "/api/auth/email-change/confirm",
+            headers=account["headers"],
+            json={"code": email_code},
+        )
+        assert changed_email.status_code == 200, changed_email.text
+        assert changed_email.json()["user"]["email"] == new_email
+
+        requested_password = client.post(
+            "/api/auth/password-change/request",
+            headers=account["headers"],
+            json={
+                "current_password": "StrongPass123",
+                "new_password": "NewStrongPass456",
+            },
+        )
+        assert requested_password.status_code == 200, requested_password.text
+        password_code = SENT_VERIFICATION_CODES[-1]["code"]
+        changed_password = client.post(
+            "/api/auth/password-change/confirm",
+            headers=account["headers"],
+            json={"code": password_code},
+        )
+        assert changed_password.status_code == 200, changed_password.text
+
+        old_session = client.get("/api/auth/me", headers=account["headers"])
+        assert old_session.status_code == 401
+
+        old_password_login = client.post(
+            "/api/auth/login",
+            json={"login": new_email, "password": "StrongPass123"},
+        )
+        assert old_password_login.status_code == 401
+
+        new_password_login = client.post(
+            "/api/auth/login",
+            json={"login": new_email, "password": "NewStrongPass456"},
+        )
+        assert new_password_login.status_code == 200, new_password_login.text
+
+
 def test_teacher_class_assignment_lifecycle():
     with TestClient(app) as client:
         teacher = register_and_login(client, "teacher")
