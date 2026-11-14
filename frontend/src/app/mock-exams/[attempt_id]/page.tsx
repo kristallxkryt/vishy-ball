@@ -62,10 +62,16 @@ export default function MockExamPage() {
 
   useEffect(() => {
     if (!task) return;
-    if (Array.isArray(task.answer)) setSelected(task.answer.map(String));
-    else if (task.answer !== null && task.answer !== undefined) setAnswer(typeof task.answer === "string" ? task.answer : JSON.stringify(task.answer));
-    else { setSelected([]); setAnswer(""); }
-  }, [task?.id, task?.answer]);
+    if (choice) {
+      if (Array.isArray(task.answer)) setSelected(task.answer.map(String));
+      else if (task.answer !== null && task.answer !== undefined) setSelected([String(task.answer)]);
+      else setSelected([]);
+      setAnswer("");
+    } else if (task.answer !== null && task.answer !== undefined) {
+      setAnswer(typeof task.answer === "string" ? task.answer : JSON.stringify(task.answer));
+      setSelected([]);
+    } else { setSelected([]); setAnswer(""); }
+  }, [task?.id, task?.answer, choice]);
 
   function currentAnswer(): unknown {
     if (choice) return multiple ? selected : (selected[0] ?? "");
@@ -75,12 +81,12 @@ export default function MockExamPage() {
     return answer;
   }
 
-  async function saveCurrent() {
-    if (!attempt || !task || attempt.status !== "in_progress") return;
+  async function saveCurrent(): Promise<boolean> {
+    if (!attempt || !task || attempt.status !== "in_progress") return false;
     const value = currentAnswer();
     if (value === "" || (Array.isArray(value) && value.length === 0)) {
       setError("Сначала введи ответ.");
-      return;
+      return false;
     }
     setBusy(true); setError("");
     try {
@@ -88,7 +94,8 @@ export default function MockExamPage() {
         method: "PUT", body: JSON.stringify({ answer: value }),
       }, token());
       setAttempt((old) => old ? { ...old, tasks: old.tasks.map((item) => item.id === task.id ? { ...item, answer: value } : item), answered_count: old.tasks.filter((item) => item.id !== task.id && item.answer !== null && item.answer !== undefined).length + 1 } : old);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось сохранить ответ."); }
+      return true;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось сохранить ответ."); return false; }
     finally { setBusy(false); }
   }
 
@@ -130,10 +137,10 @@ export default function MockExamPage() {
           })}</div> : <div className="mt-7"><label className="mb-2 block text-sm font-bold">{structured ? "Структурированный ответ (JSON)" : "Твой ответ"}</label><textarea disabled={attempt.status === "submitted"} value={answer} onChange={(e) => setAnswer(e.target.value)} rows={structured ? 5 : 3} placeholder={structured ? "Например: {&quot;1&quot;:&quot;А&quot;}" : "Введи ответ…"} className="w-full rounded-xl border border-white/10 bg-[#111821] p-4 text-sm outline-none focus:border-lime/50 disabled:opacity-70" /></div>}
           {attempt.status === "submitted" && task.result && <div className="mt-6 rounded-xl border border-white/10 bg-[#111821] p-4"><p className="font-bold">{task.result.status === "pending_review" ? "Ожидает ручной проверки" : task.result.is_correct ? "Верно" : "Неверно"}</p><p className="mt-1 text-sm text-muted">Баллы: {task.result.score ?? "—"} / {task.result.max_score ?? "—"}</p></div>}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-5">
-            <button disabled={index === 0} onClick={() => setIndex((v) => Math.max(0, v - 1))} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold disabled:opacity-30"><ChevronLeft size={16} /> Назад</button>
+            <button disabled={index === 0 || busy} onClick={async () => { const value = currentAnswer(); if (value !== "" && !(Array.isArray(value) && value.length === 0) && attempt.status === "in_progress" && !(await saveCurrent())) return; setIndex((v) => Math.max(0, v - 1)); }} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold disabled:opacity-30"><ChevronLeft size={16} /> Назад</button>
             <div className="flex flex-wrap gap-2">
               {attempt.status === "in_progress" && <button disabled={busy} onClick={saveCurrent} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold disabled:opacity-50"><Save size={16} /> {busy ? "Сохраняем…" : "Сохранить"}</button>}
-              {index < attempt.tasks.length - 1 ? <button onClick={() => setIndex((v) => Math.min(attempt.tasks.length - 1, v + 1))} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink">Далее <ChevronRight size={16} /></button> : attempt.status === "in_progress" ? <button disabled={busy || attempt.answered_count !== attempt.tasks_count} onClick={submitExam} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink disabled:opacity-40"><Send size={16} /> Завершить</button> : <Link href={`/subjects/${encodeURIComponent(attempt.subject_code)}`} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink">К пробникам <ArrowRight size={16} /></Link>}
+              {index < attempt.tasks.length - 1 ? <button disabled={busy} onClick={async () => { const value = currentAnswer(); if (value !== "" && !(Array.isArray(value) && value.length === 0) && attempt.status === "in_progress" && !(await saveCurrent())) return; setIndex((v) => Math.min(attempt.tasks.length - 1, v + 1)); }} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink disabled:opacity-50">Далее <ChevronRight size={16} /></button> : attempt.status === "in_progress" ? <button disabled={busy || attempt.answered_count !== attempt.tasks_count} onClick={submitExam} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink disabled:opacity-40"><Send size={16} /> Завершить</button> : <Link href={`/subjects/${encodeURIComponent(attempt.subject_code)}`} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink">К пробникам <ArrowRight size={16} /></Link>}
             </div>
           </div>
         </section>}
