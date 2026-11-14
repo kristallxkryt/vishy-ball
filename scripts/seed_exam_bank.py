@@ -5,10 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "bank" / "ege_2027_russian_seed.json"
+
+# When this file is run as `python scripts/seed_exam_bank.py`, Python adds
+# the scripts directory (not the project root) to sys.path.
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def seed_exam_bank(db_path: str | Path | None = None) -> int:
