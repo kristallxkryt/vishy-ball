@@ -88,8 +88,10 @@ export default function TeacherPage() {
   function toggleTask(id: number) {
     setSelected((old) => old.includes(id) ? old.filter((value) => value !== id) : [...old, id]);
   }
-  function selectVisibleNumber(ids: number[]) {
-    setSelected((old) => Array.from(new Set([...old, ...ids])));
+  function toggleNumberGroup(ids: number[]) {
+    setSelected((old) => ids.every((id) => old.includes(id))
+      ? old.filter((id) => !ids.includes(id))
+      : Array.from(new Set([...old, ...ids])));
   }
   async function createVariant() {
     if (!activeClass || selected.length === 0) { setError("Выбери класс и хотя бы одно задание."); return; }
@@ -163,7 +165,7 @@ export default function TeacherPage() {
                   const groupIds = group.map((task) => task.id);
                   const allSelected = groupIds.every((id) => selected.includes(id));
                   return <div key={number}>
-                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3"><h3 className="font-extrabold">{number === "Без номера" ? "Без номера ЕГЭ" : `Задание №${number}`} <span className="ml-1 text-xs font-medium text-muted">{group.length}</span></h3><button onClick={() => selectVisibleNumber(groupIds)} className="text-xs font-bold text-lime hover:text-white">{allSelected ? "Все выбраны" : "Выбрать все"}</button></div>
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3"><h3 className="font-extrabold">{number === "Без номера" ? "Без номера ЕГЭ" : `Задание №${number}`} <span className="ml-1 text-xs font-medium text-muted">{group.length}</span></h3><button onClick={() => toggleNumberGroup(groupIds)} className="text-xs font-bold text-lime hover:text-white">{allSelected ? "Снять выбор" : "Выбрать все"}</button></div>
                     <div className="space-y-2">{group.map((task) => {
                       const active = selected.includes(task.id);
                       return <button type="button" key={task.id} onClick={() => toggleTask(task.id)} className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition ${active ? "border-lime/40 bg-lime/[0.06]" : "border-white/[0.07] bg-[#111821] hover:border-white/20"}`}>
