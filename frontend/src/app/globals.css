@@ -49,7 +49,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, .22);
 }
 .grid-glow {
-  background-image: linear-gradient(rgba(174,184,197,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(197,243,107,.035) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(174,184,197,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(174,184,197,.035) 1px, transparent 1px);
   background-size: 42px 42px;
   mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
