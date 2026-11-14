@@ -793,6 +793,7 @@ def confirm_password_change(
                     "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'password_change'",
                     (current_user["id"],)
                 )
+                conn.commit()
             raise
         payload = json.loads(row["payload_json"] or "{}")
         if not payload.get("password_hash") or not payload.get("salt"):
