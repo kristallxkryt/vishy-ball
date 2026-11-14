@@ -5,7 +5,7 @@ export const API_URL =
 export type ApiUser = {
   id: number;
   username: string;
-  email: string;
+  email: string | null;
   role: "student" | "teacher" | "admin";
 };
 
