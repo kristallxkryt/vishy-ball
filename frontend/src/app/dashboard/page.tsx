@@ -120,8 +120,18 @@ export default function DashboardPage() {
           <section id="subjects" className="mt-12">
             <div className="flex items-end justify-between"><div><p className="eyebrow">КАТАЛОГ ЕГЭ</p><h2 className="mt-3 text-2xl font-black tracking-tight">Выбери предмет</h2></div><span className="text-xs text-muted">{subjects.length} предметов</span></div>
             {loading ? <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[1,2,3,4,5,6].map((item) => <div key={item} className="h-36 animate-pulse rounded-2xl border border-white/[0.06] bg-panel" />)}</div> : (
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {subjects.map((subject) => <Link href={`/subjects/${encodeURIComponent(subject.subject_code)}`} key={subject.subject_code} className="group rounded-2xl border border-white/[0.07] bg-panel p-5 transition hover:-translate-y-0.5 hover:border-lime/30 hover:bg-[#16201b]"><div className="flex items-start justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-lime/10 text-xs font-black text-lime">{subjectMarks[subject.subject_code] || subject.name.slice(0,2).toUpperCase()}</span><ChevronRight size={18} className="text-muted transition group-hover:translate-x-1 group-hover:text-lime" /></div><h3 className="mt-5 font-extrabold">{subject.name}</h3><p className="mt-1 text-xs text-muted">{subject.task_count} заданий в каталоге</p></Link>)}
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {subjects.map((subject, index) => <Link href={`/subjects/${encodeURIComponent(subject.subject_code)}`} key={subject.subject_code} className="group relative isolate min-h-[184px] overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#131c17] p-6 transition duration-300 hover:-translate-y-1 hover:border-lime/30 hover:shadow-[0_18px_50px_-28px_rgba(190,242,100,.28)]">
+                  <div className="pointer-events-none absolute -right-10 -top-12 -z-10 h-40 w-40 rounded-full bg-lime/[0.055] blur-3xl transition group-hover:bg-lime/[0.13]" />
+                  <div className="flex items-start justify-between">
+                    <span className="grid h-12 w-12 place-items-center rounded-2xl border border-lime/15 bg-lime/[0.08] text-xs font-black tracking-wide text-lime">{subjectMarks[subject.subject_code] || subject.name.slice(0,2).toUpperCase()}</span>
+                    <span className="text-[11px] font-bold tabular-nums text-white/20">{String(index + 1).padStart(2, "0")}</span>
+                  </div>
+                  <div className="mt-7 flex items-end justify-between gap-3">
+                    <div><h3 className="text-[17px] font-extrabold tracking-tight text-white transition group-hover:text-lime">{subject.name}</h3><p className="mt-2 text-xs font-medium text-muted">{subject.task_count} заданий <span className="mx-1 text-white/20">·</span> каталог</p></div>
+                    <span className="mb-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-white/[0.025] text-muted transition group-hover:border-lime/30 group-hover:bg-lime group-hover:text-ink"><ChevronRight size={17} /></span>
+                  </div>
+                </Link>)}
               </div>
             )}
             {!loading && subjects.length === 0 && <p className="mt-6 rounded-2xl border border-white/[0.07] bg-panel p-6 text-sm text-muted">В каталоге пока нет активных предметов.</p>}
