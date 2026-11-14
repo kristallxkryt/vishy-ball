@@ -37,7 +37,7 @@ export default function TeacherPage() {
     const auth = token();
     if (!auth) { router.replace("/auth"); return; }
     Promise.all([
-      apiRequest<ApiUser>("/api/auth/me", {}, auth),
+      apiRequest<{ role: "student" | "teacher" | "admin" }>("/api/auth/me", {}, auth),
       apiRequest<{ classes: ClassItem[] }>("/api/classes", {}, auth),
     ]).then(([me, data]) => {
       if (me.role !== "teacher") { router.replace(me.role === "admin" ? "/admin" : "/dashboard"); return; }
