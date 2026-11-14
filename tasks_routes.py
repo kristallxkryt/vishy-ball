@@ -134,6 +134,8 @@ def init_tasks_db():
             "options_json": "TEXT NOT NULL DEFAULT '[]'",
             "media_json": "TEXT NOT NULL DEFAULT '[]'",
             "checking_config_json": "TEXT NOT NULL DEFAULT '{}'",
+            "exam_number": "INTEGER",
+            "variant_label": "TEXT",
         }
 
         for column_name, column_type in new_columns.items():
@@ -197,6 +199,8 @@ class TaskPublic(BaseModel):
     task_type: str = "text"
     options: Any = []
     media: list[dict] = []
+    exam_number: int | None = None
+    variant_label: str | None = None
 
 
 # --------------------------------------------------
@@ -224,6 +228,8 @@ def task_to_public(row):
         "question": row["question"],
         "difficulty": row["difficulty"],
         "task_type": row["task_type"],
+        "exam_number": row["exam_number"] if "exam_number" in row.keys() else None,
+        "variant_label": row["variant_label"] if "variant_label" in row.keys() else None,
         "options": options,
         "media": media,
     }
@@ -551,7 +557,9 @@ def get_tasks(
             difficulty,
             task_type,
             options_json,
-            media_json
+            media_json,
+            exam_number,
+            variant_label
 
         FROM tasks
 
@@ -595,14 +603,7 @@ def get_task(task_id: int):
 
     with get_tasks_connection() as conn:
         row = conn.execute("""
-            SELECT
-                id,
-                subject_code,
-                topic,
-                question,
-                difficulty
-
-            FROM tasks
+            SELECT * FROM tasks
 
             WHERE id = ?
               AND is_active = 1
