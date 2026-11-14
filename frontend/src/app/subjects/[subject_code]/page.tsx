@@ -200,7 +200,7 @@ export default function SubjectPage() {
                 {selectedTopic && (
                   <button
                     onClick={() => { setSelectedTopic(null); setSearch(""); setDifficulty(""); }}
-                    className="text-sm font-semibold text-lime hover:text-[#d5ff86]"
+                    className="text-sm font-semibold text-lime hover:text-[#e1e5eb]"
                   >
                     Все темы
                   </button>
