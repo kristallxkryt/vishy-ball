@@ -67,7 +67,7 @@ function AuthForm() {
         </Link>
         <div className="mt-9 text-center">
           <p className="eyebrow">{mode === "login" ? "С возвращением" : "Первый шаг к цели"}</p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Отправить код"}</h1>
+          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Создать аккаунт"}</h1>
           <p className="mt-3 text-sm leading-6 text-muted">{mode === "login" ? "Продолжай подготовку с того места, где остановился." : "Выбери роль и присоединяйся к платформе."}</p>
         </div>
         <div className="mt-8 grid grid-cols-2 rounded-xl border border-white/[0.08] bg-black/20 p-1">
@@ -92,7 +92,7 @@ function AuthForm() {
           {mode === "login" && <label className="block text-xs font-bold text-white/75">Логин или почта<input required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Логин или email" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>}
           <label className="block text-xs font-bold text-white/75">Пароль<div className="relative mt-2"><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Не менее 8 символов" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 pr-12 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p>}
-          <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime px-5 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-wait disabled:opacity-60">{loading ? "Подождите..." : mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"} {!loading && <ArrowRight size={17} />}</button>
+          <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime px-5 py-4 text-sm font-black text-ink transition hover:bg-[#d5ff86] disabled:cursor-wait disabled:opacity-60">{loading ? "Подождите..." : mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Отправить код"} {!loading && <ArrowRight size={17} />}</button>
         </form>
         <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-muted"><ShieldCheck size={14} className="text-lime" /> Данные передаются через API платформы</div>
       </div>
