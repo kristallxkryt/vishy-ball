@@ -678,6 +678,21 @@ def _current_password_matches(user_id: int, password: str) -> bool:
     return hmac.compare_digest(candidate, user["password_hash"])
 
 
+def _check_account_code_cooldown(user_id: int, purpose: str):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT created_at FROM account_email_codes WHERE user_id = ? AND purpose = ?",
+            (user_id, purpose)
+        ).fetchone()
+    if row is None:
+        return
+    created = datetime.fromisoformat(row["created_at"])
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    if (_now() - created).total_seconds() < 60:
+        raise HTTPException(status_code=429, detail="Новый код можно запросить через минуту.")
+
+
 def _store_account_code(user_id: int, purpose: str, target_email: str | None, payload: dict, code: str):
     with get_connection() as conn:
         conn.execute(
@@ -701,6 +716,7 @@ def request_email_change(
     new_email = str(data.new_email).strip().lower()
     if new_email == current_user["email"].lower():
         raise HTTPException(status_code=400, detail="Это уже текущий адрес почты.")
+    _check_account_code_cooldown(current_user["id"], "email_change")
     with get_connection() as conn:
         duplicate = conn.execute(
             "SELECT 1 FROM auth_users WHERE email = ? COLLATE NOCASE",
@@ -764,6 +780,7 @@ def request_password_change(
 ):
     if not _current_password_matches(current_user["id"], data.current_password):
         raise HTTPException(status_code=400, detail="Текущий пароль указан неверно.")
+    _check_account_code_cooldown(current_user["id"], "password_change")
     if hmac.compare_digest(data.current_password, data.new_password):
         raise HTTPException(status_code=400, detail="Новый пароль должен отличаться от текущего.")
     code = _new_code()
