@@ -52,6 +52,10 @@ export default function DashboardPage() {
       apiRequest<Stats>("/api/profile/stats", {}, token),
       apiRequest<ApiUser>("/api/auth/me", {}, token),
     ]).then(([catalog, progress, me]) => {
+      if (me.role === "admin") {
+        router.replace("/admin");
+        return;
+      }
       setSubjects(catalog.subjects);
       setStats(progress);
       setUser(me);
