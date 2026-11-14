@@ -32,7 +32,7 @@ function AuthForm() {
       }
       const result = await apiRequest<LoginResponse>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ login: mode === "register" ? username : email || username, password }),
+        body: JSON.stringify({ login: username, password }),
       });
       localStorage.setItem("vb_access_token", result.access_token);
       localStorage.setItem("vb_user", JSON.stringify(result.user));
