@@ -614,6 +614,156 @@ def get_me(
 
 
 # =========================================================
+# ACCOUNT EMAIL AND PASSWORD CHANGES
+# =========================================================
+
+def _current_password_matches(user_id: int, password: str) -> bool:
+    with get_connection() as conn:
+        user = conn.execute(
+            "SELECT password_hash, salt FROM auth_users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+    if user is None:
+        return False
+    candidate = hash_password(password, bytes.fromhex(user["salt"]))
+    return hmac.compare_digest(candidate, user["password_hash"])
+
+
+def _store_account_code(user_id: int, purpose: str, target_email: str | None, payload: dict, code: str):
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO account_email_codes
+            (user_id, purpose, target_email, code_hash, payload_json, expires_at, attempts, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+            """,
+            (
+                user_id, purpose, target_email, _code_hash(code),
+                json.dumps(payload, ensure_ascii=False), _expires_at(), _now().isoformat()
+            )
+        )
+
+
+@router.post("/email-change/request")
+def request_email_change(
+    data: EmailChangeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    new_email = str(data.new_email).strip().lower()
+    if new_email == current_user["email"].lower():
+        raise HTTPException(status_code=400, detail="Это уже текущий адрес почты.")
+    with get_connection() as conn:
+        duplicate = conn.execute(
+            "SELECT 1 FROM auth_users WHERE email = ? COLLATE NOCASE",
+            (new_email,)
+        ).fetchone()
+    if duplicate:
+        raise HTTPException(status_code=409, detail="Этот адрес уже используется другим аккаунтом.")
+    code = _new_code()
+    _send_email_code(
+        new_email,
+        "Подтверждение новой почты — Высший балл",
+        "Чтобы изменить адрес электронной почты аккаунта, введите этот код:",
+        code
+    )
+    _store_account_code(current_user["id"], "email_change", new_email, {}, code)
+    return {"message": "Код отправлен на новый адрес почты."}
+
+
+@router.post("/email-change/confirm")
+def confirm_email_change(
+    data: ConfirmCodeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM account_email_codes WHERE user_id = ? AND purpose = 'email_change'",
+            (current_user["id"],)
+        ).fetchone()
+        try:
+            _verify_stored_code(row, data.code)
+        except HTTPException as exc:
+            if row is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
+                conn.execute(
+                    "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'email_change'",
+                    (current_user["id"],)
+                )
+            raise
+        new_email = row["target_email"]
+        duplicate = conn.execute(
+            "SELECT 1 FROM auth_users WHERE email = ? COLLATE NOCASE AND id != ?",
+            (new_email, current_user["id"])
+        ).fetchone()
+        if duplicate:
+            raise HTTPException(status_code=409, detail="Этот адрес уже используется другим аккаунтом.")
+        conn.execute(
+            "UPDATE auth_users SET email = ?, email_verified = 1 WHERE id = ?",
+            (new_email, current_user["id"])
+        )
+        conn.execute(
+            "DELETE FROM account_email_codes WHERE user_id = ? AND purpose = 'email_change'",
+            (current_user["id"],)
+        )
+    return {"message": "Адрес электронной почты успешно изменён.", "user": {**current_user, "email": new_email}}
+
+
+@router.post("/password-change/request")
+def request_password_change(
+    data: PasswordChangeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    if not _current_password_matches(current_user["id"], data.current_password):
+        raise HTTPException(status_code=400, detail="Текущий пароль указан неверно.")
+    if hmac.compare_digest(data.current_password, data.new_password):
+        raise HTTPException(status_code=400, detail="Новый пароль должен отличаться от текущего.")
+    code = _new_code()
+    _send_email_code(
+        current_user["email"],
+        "Подтверждение смены пароля — Высший балл",
+        "Чтобы изменить пароль аккаунта, введите этот код:",
+        code
+    )
+    salt = os.urandom(16)
+    payload = {"password_hash": hash_password(data.new_password, salt), "salt": salt.hex()}
+    _store_account_code(current_user["id"], "password_change", None, payload, code)
+    return {"message": "Код отправлен на текущую почту."}
+
+
+@router.post("/password-change/confirm")
+def confirm_password_change(
+    data: ConfirmCodeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM account_email_codes WHERE user_id = ? AND purpose = 'password_change'",
+            (current_user["id"],)
+        ).fetchone()
+        try:
+            _verify_stored_code(row, data.code)
+        except HTTPException as exc:
+            if row is not None and exc.status_code == 400 and "Неверный код" in str(exc.detail):
+                conn.execute(
+                    "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'password_change'",
+                    (current_user["id"],)
+                )
+            raise
+        payload = json.loads(row["payload_json"] or "{}")
+        if not payload.get("password_hash") or not payload.get("salt"):
+            raise HTTPException(status_code=400, detail="Запрос смены пароля повреждён. Запросите код повторно.")
+        conn.execute(
+            "UPDATE auth_users SET password_hash = ?, salt = ? WHERE id = ?",
+            (payload["password_hash"], payload["salt"], current_user["id"])
+        )
+        conn.execute("DELETE FROM auth_sessions WHERE user_id = ?", (current_user["id"],))
+        conn.execute(
+            "DELETE FROM account_email_codes WHERE user_id = ? AND purpose = 'password_change'",
+            (current_user["id"],)
+        )
+    return {"message": "Пароль изменён. Войдите в аккаунт с новым паролем."}
+
+
+# =========================================================
 # LOGOUT
 # =========================================================
 
