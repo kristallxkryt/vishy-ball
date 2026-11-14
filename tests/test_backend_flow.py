@@ -594,6 +594,8 @@ def test_teacher_class_assignment_lifecycle():
             "assignment_attempts",
             "assignment_answers",
             "task_attempts",
+            "mock_exam_attempts",
+            "mock_exam_attempt_tasks",
         }.issubset(tables)
 
 
