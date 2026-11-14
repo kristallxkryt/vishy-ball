@@ -14,6 +14,8 @@ type Task = {
   question: string;
   difficulty: string | null;
   task_type: string;
+  exam_number: number | null;
+  variant_label: string | null;
   options: Option[];
   media: Array<{ url?: string; alt?: string; type?: string }>;
 };
@@ -127,7 +129,8 @@ export default function PracticePage() {
           <section className="mt-8 rounded-3xl border border-white/[0.08] bg-panel p-6 sm:p-9">
             <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
               <span className="rounded-full bg-lime/10 px-3 py-1.5 text-lime">{task.topic}</span>
-              <span className="rounded-full bg-white/[0.06] px-3 py-1.5">Задание №{task.id}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1.5">Задание №{task.exam_number ?? task.id}</span>
+              {task.variant_label && <span className="rounded-full bg-white/[0.06] px-3 py-1.5">{task.variant_label}</span>}
               <span className="rounded-full bg-white/[0.06] px-3 py-1.5">{task.difficulty === "easy" ? "Базовый" : task.difficulty === "hard" ? "Сложный" : "Средний"}</span>
             </div>
             <div className="mt-7 whitespace-pre-wrap text-base leading-8 text-white/95">{task.question}</div>
