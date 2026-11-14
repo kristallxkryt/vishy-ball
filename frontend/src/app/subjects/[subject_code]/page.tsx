@@ -38,6 +38,14 @@ type Task = {
   media: Array<{ url?: string; alt?: string; type?: string }>;
 };
 
+const taskTypeLabels: Record<string, string> = {
+  text: "Краткий ответ",
+  single_choice: "Один вариант",
+  multiple_choice: "Несколько вариантов",
+  matching: "Соответствие",
+  ordering: "Последовательность",
+};
+
 const difficultyLabels: Record<string, string> = {
   easy: "Базовый",
   medium: "Средний",
@@ -287,6 +295,7 @@ export default function SubjectPage() {
                         <article key={task.id} className="rounded-2xl border border-white/[0.07] bg-panel p-5 transition hover:border-white/25 sm:p-6">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
                             <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-white/80">{task.variant_label || `Вариант ${index + 1}`}</span>
+                            <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-muted">{taskTypeLabels[task.task_type] || "Формат ответа"}</span>
                             <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-muted">{difficultyLabels[task.difficulty || ""] || "Без уровня"}</span>
                           </div>
                           <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-white/90">{task.question}</p>
