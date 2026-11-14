@@ -9,6 +9,9 @@ import hmac
 import os
 import secrets
 import sqlite3
+import json
+import smtplib
+from email.message import EmailMessage
 
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -78,6 +81,35 @@ def init_auth_tables():
             )
         """)
 
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pending_registrations (
+                email TEXT PRIMARY KEY COLLATE NOCASE,
+                username TEXT NOT NULL COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                salt TEXT NOT NULL,
+                role TEXT NOT NULL,
+                code_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS account_email_codes (
+                user_id INTEGER NOT NULL,
+                purpose TEXT NOT NULL,
+                target_email TEXT,
+                code_hash TEXT NOT NULL,
+                payload_json TEXT,
+                expires_at TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, purpose),
+                FOREIGN KEY(user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+            )
+        """)
+
         columns = {
             row["name"]
             for row in conn.execute(
@@ -95,6 +127,12 @@ def init_auth_tables():
             conn.execute("""
                 ALTER TABLE auth_users
                 ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+            """)
+
+        if "email_verified" not in columns:
+            conn.execute("""
+                ALTER TABLE auth_users
+                ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1
             """)
 
         conn.execute("""
@@ -156,6 +194,82 @@ class LoginRequest(BaseModel):
         min_length=8,
         max_length=128
     )
+
+
+class VerifyRegistrationRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ConfirmCodeRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _code_hash(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+def _new_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _expires_at() -> str:
+    return (_now() + timedelta(minutes=10)).isoformat()
+
+
+def _send_email_code(recipient: str, subject: str, purpose_text: str, code: str):
+    host = os.getenv("SMTP_HOST", "").strip()
+    username = os.getenv("SMTP_USER", "").strip()
+    password = os.getenv("SMTP_PASSWORD", "")
+    sender = os.getenv("SMTP_FROM", "").strip() or username
+    if not host or not sender:
+        raise HTTPException(status_code=503, detail="Отправка писем не настроена. Добавьте SMTP-настройки в переменные окружения.")
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = sender
+    message["To"] = recipient
+    message.set_content(
+        f"Здравствуйте!\\n\\n{purpose_text}\\n\\nВаш код подтверждения: {code}\\n"
+        "Код действует 10 минут. Никому не сообщайте его.\\n"
+        "Если вы не запрашивали это действие, проигнорируйте письмо."
+    )
+    try:
+        port = int(os.getenv("SMTP_PORT", "587"))
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            if os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes"}:
+                server.starttls()
+            if username:
+                server.login(username, password)
+            server.send_message(message)
+    except (OSError, smtplib.SMTPException, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Не удалось отправить письмо. Проверьте SMTP-настройки.") from exc
+
+
+def _verify_stored_code(row, code: str):
+    if row is None:
+        raise HTTPException(status_code=400, detail="Код не найден. Запросите новый.")
+    expires = datetime.fromisoformat(row["expires_at"])
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires <= _now():
+        raise HTTPException(status_code=400, detail="Срок действия кода истёк. Запросите новый.")
+    if row["attempts"] >= 5:
+        raise HTTPException(status_code=429, detail="Слишком много попыток. Запросите новый код.")
+    if not hmac.compare_digest(row["code_hash"], _code_hash(code)):
+        raise HTTPException(status_code=400, detail="Неверный код подтверждения.")
 
 
 # =========================================================
