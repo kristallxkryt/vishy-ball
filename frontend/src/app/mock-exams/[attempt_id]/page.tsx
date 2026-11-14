@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Save, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Save, Send } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 
 type ExamTask = {
@@ -71,7 +71,7 @@ export default function MockExamPage() {
       setAnswer(typeof task.answer === "string" ? task.answer : JSON.stringify(task.answer));
       setSelected([]);
     } else { setSelected([]); setAnswer(""); }
-  }, [task?.id, task?.answer, choice]);
+  }, [task, choice]);
 
   function currentAnswer(): unknown {
     if (choice) return multiple ? selected : (selected[0] ?? "");
