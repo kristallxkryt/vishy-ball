@@ -25,6 +25,7 @@ from recommendations_routes import router as recommendations_router
 from users_routes import router as users_router
 from classes_routes import router as classes_router
 from variants_routes import router as variants_router
+from mock_exams_routes import router as mock_exams_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -35,6 +36,7 @@ app.include_router(recommendations_router)
 app.include_router(users_router)
 app.include_router(classes_router)
 app.include_router(variants_router)
+app.include_router(mock_exams_router)
 
 # CORS для локальной разработки
 frontend_origins = os.getenv(
