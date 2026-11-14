@@ -55,6 +55,22 @@ function AuthForm() {
     }
   }
 
+  async function resendCode() {
+    setError("");
+    setLoading(true);
+    try {
+      await apiRequest("/api/auth/register/resend", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      setError("Новый код отправлен на почту.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось отправить код.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-12">
       <div className="pointer-events-none absolute inset-0 grid-glow opacity-70" />
@@ -87,6 +103,7 @@ function AuthForm() {
               <p className="rounded-xl border border-lime/20 bg-lime/[0.06] px-4 py-3 text-sm leading-6 text-muted">Мы отправили шестизначный код на <span className="font-bold text-white">{email}</span>. Введи его, чтобы подтвердить почту и создать аккаунт.</p>
               <label className="block text-xs font-bold text-white/75">Код из письма<input required inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} pattern="[0-9]{6}" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-center text-xl font-black tracking-[.4em] outline-none focus:border-lime/60" /></label>
               <button type="button" onClick={() => { setVerificationStep(false); setVerificationCode(""); setError(""); }} className="text-xs font-semibold text-muted transition hover:text-white">Изменить данные регистрации</button>
+              <button type="button" disabled={loading} onClick={resendCode} className="text-xs font-semibold text-lime transition hover:text-white disabled:opacity-50">Отправить код повторно</button>
             </div>
           )}
           {mode === "login" && <label className="block text-xs font-bold text-white/75">Логин или почта<input required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Логин или email" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>}
