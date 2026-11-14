@@ -98,8 +98,7 @@ export default function AccountPage() {
             <dl className="mt-7 grid gap-5 sm:grid-cols-2">
               <div><dt className="text-xs font-semibold text-muted">Имя пользователя</dt><dd className="mt-2 font-bold">{user?.username || "—"}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">Тип аккаунта</dt><dd className="mt-2 font-bold">{user?.role === "teacher" ? "Учитель" : user?.role === "admin" ? "Администратор" : "Ученик"}</dd></div>
-              <div className="sm:col-span-2"><dt className="text-xs font-semibold text-muted">Адрес аккаунта</dt><dd className="mt-2 font-bold">{user?.email || "—"}</dd></div>
-            </dl>
+                          </dl>
           )}
         </section>
 
