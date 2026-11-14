@@ -219,7 +219,13 @@ def _now() -> datetime:
 
 
 def _code_hash(code: str) -> str:
-    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+    # Slow derivation makes a database leak much harder to brute-force offline.
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        code.encode("utf-8"),
+        b"vishy-ball-email-verification-v1",
+        ITERATIONS
+    ).hex()
 
 
 def _new_code() -> str:
@@ -373,6 +379,7 @@ def verify_registration(data: VerifyRegistrationRequest):
                     "UPDATE pending_registrations SET attempts = attempts + 1 WHERE email = ?",
                     (email,)
                 )
+                conn.commit()
             raise
         cursor = conn.execute(
             """
@@ -688,6 +695,7 @@ def confirm_email_change(
                     "UPDATE account_email_codes SET attempts = attempts + 1 WHERE user_id = ? AND purpose = 'email_change'",
                     (current_user["id"],)
                 )
+                conn.commit()
             raise
         new_email = row["target_email"]
         duplicate = conn.execute(
