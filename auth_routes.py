@@ -201,6 +201,10 @@ class VerifyRegistrationRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
 
 
+class ResendRegistrationRequest(BaseModel):
+    email: EmailStr
+
+
 class EmailChangeRequest(BaseModel):
     new_email: EmailStr
 
@@ -361,6 +365,40 @@ def register(data: RegisterRequest):
             )
         )
     return {"message": "Код подтверждения отправлен на указанную почту.", "verification_required": True}
+
+
+@router.post("/register/resend")
+def resend_registration_code(data: ResendRegistrationRequest):
+    email = str(data.email).strip().lower()
+    with get_connection() as conn:
+        pending = conn.execute(
+            "SELECT created_at FROM pending_registrations WHERE email = ? COLLATE NOCASE",
+            (email,)
+        ).fetchone()
+    if pending is None:
+        raise HTTPException(status_code=404, detail="Незавершённая регистрация не найдена. Начните регистрацию заново.")
+    created = datetime.fromisoformat(pending["created_at"])
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    if (_now() - created).total_seconds() < 60:
+        raise HTTPException(status_code=429, detail="Повторный код можно запросить через минуту.")
+    code = _new_code()
+    _send_email_code(
+        email,
+        "Новый код регистрации — Высший балл",
+        "Введите этот код, чтобы завершить регистрацию:",
+        code
+    )
+    with get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE pending_registrations
+            SET code_hash = ?, expires_at = ?, attempts = 0, created_at = ?
+            WHERE email = ? COLLATE NOCASE
+            """,
+            (_code_hash(code), _expires_at(), _now().isoformat(), email)
+        )
+    return {"message": "Новый код отправлен на почту."}
 
 
 @router.post("/register/verify", status_code=201)
