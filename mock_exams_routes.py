@@ -147,7 +147,7 @@ def serialize_attempt(conn, attempt):
         tasks.append({
             **public_task(row),
             "position": row["position"],
-            "answer": answer if attempt["status"] == "in_progress" else None,
+            "answer": answer,
             "result": result,
         })
     return {
