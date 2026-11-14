@@ -15,18 +15,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from main import app
-import auth_routes
 from auth_routes import create_session, get_connection, hash_password
 from checking_routes import evaluate_answer
 
 
 DB_PATH = PROJECT_ROOT / "users.db"
-
-# Tests use a deterministic in-memory mail sink; no real SMTP connection is made.
-SENT_VERIFICATION_CODES = []
-auth_routes._send_email_code = lambda recipient, subject, purpose_text, code: SENT_VERIFICATION_CODES.append(
-    {"recipient": recipient, "code": code}
-)
 
 
 def register_and_login(client: TestClient, role: str):
@@ -39,14 +32,7 @@ def register_and_login(client: TestClient, role: str):
     }
 
     registered = client.post("/api/auth/register", json=payload)
-    assert registered.status_code == 202, registered.text
-    sent = SENT_VERIFICATION_CODES[-1]
-    assert sent["recipient"] == payload["email"]
-    verified = client.post(
-        "/api/auth/register/verify",
-        json={"email": payload["email"], "code": sent["code"]},
-    )
-    assert verified.status_code == 201, verified.text
+    assert registered.status_code == 201, registered.text
 
     logged_in = client.post(
         "/api/auth/login",
@@ -58,66 +44,12 @@ def register_and_login(client: TestClient, role: str):
     assert logged_in.status_code == 200, logged_in.text
 
     return {
-        "id": verified.json()["user"]["id"],
+        "id": registered.json()["user"]["id"],
         "username": payload["username"],
         "headers": {
             "Authorization": f"Bearer {logged_in.json()['access_token']}"
         },
     }
-
-
-def test_email_verification_and_account_security_changes():
-    with TestClient(app) as client:
-        account = register_and_login(client, "student")
-        token = account["headers"]["Authorization"].split(" ", 1)[1]
-
-        new_email = f"changed_{uuid4().hex[:10]}@example.com"
-        requested_email = client.post(
-            "/api/auth/email-change/request",
-            headers=account["headers"],
-            json={"new_email": new_email},
-        )
-        assert requested_email.status_code == 200, requested_email.text
-        email_code = SENT_VERIFICATION_CODES[-1]["code"]
-        changed_email = client.post(
-            "/api/auth/email-change/confirm",
-            headers=account["headers"],
-            json={"code": email_code},
-        )
-        assert changed_email.status_code == 200, changed_email.text
-        assert changed_email.json()["user"]["email"] == new_email
-
-        requested_password = client.post(
-            "/api/auth/password-change/request",
-            headers=account["headers"],
-            json={
-                "current_password": "StrongPass123",
-                "new_password": "NewStrongPass456",
-            },
-        )
-        assert requested_password.status_code == 200, requested_password.text
-        password_code = SENT_VERIFICATION_CODES[-1]["code"]
-        changed_password = client.post(
-            "/api/auth/password-change/confirm",
-            headers=account["headers"],
-            json={"code": password_code},
-        )
-        assert changed_password.status_code == 200, changed_password.text
-
-        old_session = client.get("/api/auth/me", headers=account["headers"])
-        assert old_session.status_code == 401
-
-        old_password_login = client.post(
-            "/api/auth/login",
-            json={"login": new_email, "password": "StrongPass123"},
-        )
-        assert old_password_login.status_code == 401
-
-        new_password_login = client.post(
-            "/api/auth/login",
-            json={"login": new_email, "password": "NewStrongPass456"},
-        )
-        assert new_password_login.status_code == 200, new_password_login.text
 
 
 def test_teacher_class_assignment_lifecycle():
@@ -794,3 +726,33 @@ def test_multiple_choice_rejects_duplicate_option_ids():
         evaluate_answer(task, ["option-a", "option-a"])
 
     assert error.value.status_code == 422
+
+
+
+def test_password_change_does_not_require_email(client=None):
+    with TestClient(app) as client:
+        account = register_and_login(client, "student")
+        changed = client.post(
+            "/api/auth/password-change",
+            headers=account["headers"],
+            json={
+                "current_password": "StrongPass123",
+                "new_password": "NewStrongPass456",
+            },
+        )
+        assert changed.status_code == 200, changed.text
+
+        old_session = client.get("/api/auth/me", headers=account["headers"])
+        assert old_session.status_code == 401
+
+        old_login = client.post(
+            "/api/auth/login",
+            json={"login": account["username"], "password": "StrongPass123"},
+        )
+        assert old_login.status_code == 401
+
+        new_login = client.post(
+            "/api/auth/login",
+            json={"login": account["username"], "password": "NewStrongPass456"},
+        )
+        assert new_login.status_code == 200, new_login.text
