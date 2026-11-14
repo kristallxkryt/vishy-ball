@@ -75,7 +75,7 @@ export default function HomePage() {
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="grid-glow absolute inset-0" />
         <div className="absolute -right-40 top-20 h-[520px] w-[520px] rounded-full bg-lime/10 blur-[140px]" />
-        <div className="absolute -left-48 top-[520px] h-[420px] w-[420px] rounded-full bg-emerald-900/20 blur-[130px]" />
+        <div className="absolute -left-48 top-[520px] h-[420px] w-[420px] rounded-full bg-slate-500/10 blur-[130px]" />
       </div>
 
       <header className="shell flex h-20 items-center justify-between border-b border-white/[0.07]">
