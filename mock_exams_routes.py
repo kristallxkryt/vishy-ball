@@ -121,7 +121,7 @@ def get_attempt_or_404(conn, attempt_id, user_id):
 def serialize_attempt(conn, attempt):
     rows = conn.execute("""
         SELECT mt.task_id, mt.exam_number, mt.position, mt.answer_json,
-               mt.result_json, t.subject_code, t.topic, t.question,
+               mt.result_json, t.id AS id, t.subject_code, t.topic, t.question,
                t.difficulty, t.task_type, t.options_json, t.media_json,
                t.variant_label
         FROM mock_exam_attempt_tasks mt
