@@ -729,7 +729,7 @@ def test_multiple_choice_rejects_duplicate_option_ids():
 
 
 
-def test_password_change_does_not_require_email(client=None):
+def test_password_change_does_not_require_email():
     with TestClient(app) as client:
         account = register_and_login(client, "student")
         changed = client.post(
@@ -756,3 +756,25 @@ def test_password_change_does_not_require_email(client=None):
             json={"login": account["username"], "password": "NewStrongPass456"},
         )
         assert new_login.status_code == 200, new_login.text
+
+
+
+def test_registration_does_not_require_email():
+    with TestClient(app) as client:
+        username = f"student_{uuid4().hex[:10]}"
+        registered = client.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "password": "StrongPass123",
+                "role": "student",
+            },
+        )
+        assert registered.status_code == 201, registered.text
+        assert registered.json()["user"]["email"] is None
+
+        logged_in = client.post(
+            "/api/auth/login",
+            json={"login": username, "password": "StrongPass123"},
+        )
+        assert logged_in.status_code == 200, logged_in.text
