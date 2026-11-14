@@ -143,8 +143,11 @@ export default function SubjectPage() {
             {catalog?.subject_name || "Загрузка предмета…"}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-            Выбери тему, чтобы открыть задания. Можно тренироваться по отдельным разделам и постепенно закрывать пробелы.
+            Задания сгруппированы по номерам ЕГЭ. Внутри каждого номера находятся отдельные варианты для тренировки.
           </p>
+          <a href="https://fipi.ru/ege/otkrytyy-bank-zadaniy-ege" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-muted underline decoration-white/20 underline-offset-4 transition hover:text-white">
+            Открытый банк ФИПИ <ArrowRight size={13} />
+          </a>
         </div>
 
         {error && (
