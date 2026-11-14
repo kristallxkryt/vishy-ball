@@ -102,6 +102,12 @@ export default function AccountPage() {
         localStorage.setItem("vb_user", JSON.stringify(result.user));
       }
       setNotice(result.message || "Изменения сохранены.");
+      if (activeFlow === "password") {
+        localStorage.removeItem("vb_access_token");
+        localStorage.removeItem("vb_user");
+        router.replace("/auth");
+        return;
+      }
       setActiveFlow(null);
       setStep("form");
       setCode("");
