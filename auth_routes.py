@@ -248,7 +248,7 @@ def _send_email_code(recipient: str, subject: str, purpose_text: str, code: str)
     message["From"] = sender
     message["To"] = recipient
     message.set_content(
-        f"Здравствуйте!\\n\\n{purpose_text}\\n\\nВаш код подтверждения: {code}\\n"
+        f"Здравствуйте!\n\\n{purpose_text}\\n\\nВаш код подтверждения: {code}\\n"
         "Код действует 10 минут. Никому не сообщайте его.\\n"
         "Если вы не запрашивали это действие, проигнорируйте письмо."
     )
