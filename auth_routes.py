@@ -326,6 +326,10 @@ def register(data: RegisterRequest):
     role = data.role
 
     with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM pending_registrations WHERE expires_at <= ?",
+            (_now().isoformat(),)
+        )
         existing = conn.execute(
             """
             SELECT 1 FROM auth_users
