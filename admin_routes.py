@@ -92,6 +92,8 @@ def init_admin_catalog_db():
                 "options_json": "TEXT NOT NULL DEFAULT '[]'",
                 "media_json": "TEXT NOT NULL DEFAULT '[]'",
                 "checking_config_json": "TEXT NOT NULL DEFAULT '{}'",
+                "exam_number": "INTEGER",
+                "variant_label": "TEXT",
             }
 
             for name, definition in migrations.items():
@@ -122,6 +124,8 @@ class TaskCreate(BaseModel):
     options: list[dict[str, Any]] = Field(default_factory=list)
     media: list[dict[str, Any]] = Field(default_factory=list)
     checking_config: dict[str, Any] = Field(default_factory=dict)
+    exam_number: int | None = Field(default=None, ge=1, le=100)
+    variant_label: str | None = Field(default=None, max_length=100)
 
 
 class TaskUpdate(BaseModel):
@@ -144,6 +148,8 @@ class TaskUpdate(BaseModel):
     options: list[dict[str, Any]] | None = None
     media: list[dict[str, Any]] | None = None
     checking_config: dict[str, Any] | None = None
+    exam_number: int | None = Field(default=None, ge=1, le=100)
+    variant_label: str | None = Field(default=None, max_length=100)
 
 
 class SubjectCreate(BaseModel):
@@ -203,6 +209,8 @@ def task_to_admin(row):
         "task_type": (
             row["task_type"] if "task_type" in keys else "text"
         ),
+        "exam_number": row["exam_number"] if "exam_number" in keys else None,
+        "variant_label": row["variant_label"] if "variant_label" in keys else None,
         "options": (
             _load_json(row["options_json"], [])
             if "options_json" in keys else []
@@ -302,9 +310,9 @@ def create_task(data: TaskCreate):
                 subject_code, topic, question, answer,
                 hint, explanation, difficulty, source,
                 task_type, options_json, media_json,
-                checking_config_json
+                checking_config_json, exam_number, variant_label
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             subject_code,
             topic_name,
@@ -318,6 +326,8 @@ def create_task(data: TaskCreate):
             json.dumps(data.options, ensure_ascii=False),
             json.dumps(data.media, ensure_ascii=False),
             json.dumps(data.checking_config, ensure_ascii=False),
+            data.exam_number,
+            data.variant_label,
         ))
 
         task_id = cursor.lastrowid
@@ -453,7 +463,7 @@ def update_task(task_id: int, data: TaskUpdate):
         regular_fields = {
             "subject_code", "topic", "question", "answer",
             "hint", "explanation", "difficulty", "source",
-            "task_type",
+            "task_type", "exam_number", "variant_label",
         }
 
         for key in regular_fields:
