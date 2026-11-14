@@ -31,6 +31,8 @@ type Task = {
   question: string;
   difficulty: string | null;
   task_type: string;
+  exam_number: number | null;
+  variant_label: string | null;
   options: unknown[];
   media: Array<{ url?: string; alt?: string; type?: string }>;
 };
@@ -104,9 +106,23 @@ export default function SubjectPage() {
     );
   }, [tasks, search]);
 
+  const groupedTasks = useMemo(() => {
+    const groups = new Map<string, Task[]>();
+    visibleTasks.forEach((task) => {
+      const key = task.exam_number ? String(task.exam_number) : "Без номера";
+      groups.set(key, [...(groups.get(key) || []), task]);
+    });
+    return Array.from(groups.entries()).sort((a, b) => {
+      if (a[0] === "Без номера") return 1;
+      if (b[0] === "Без номера") return -1;
+      return Number(a[0]) - Number(b[0]);
+    });
+  }, [visibleTasks]);
+
+
   return (
     <main className="min-h-screen bg-ink text-white">
-      <header className="border-b border-white/[0.07] bg-[#0e1411]">
+      <header className="border-b border-white/[0.07] bg-[#10151c]">
         <div className="mx-auto flex h-[76px] max-w-[1180px] items-center justify-between px-5 sm:px-8">
           <Link href="/dashboard" className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime text-ink">
@@ -186,7 +202,7 @@ export default function SubjectPage() {
                     <button
                       key={topic.topic_id ?? topic.topic}
                       onClick={() => { setSelectedTopic(topic.topic); setSearch(""); }}
-                      className={`group rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-lime/30 ${active ? "border-lime/50 bg-lime/[0.08]" : "border-white/[0.07] bg-panel hover:bg-[#16201b]"}`}
+                      className={`group rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-lime/30 ${active ? "border-lime/50 bg-lime/[0.08]" : "border-white/[0.07] bg-panel hover:bg-[#202936]"}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <span className="grid h-10 w-10 place-items-center rounded-xl bg-lime/10 text-xs font-black text-lime">
@@ -244,10 +260,10 @@ export default function SubjectPage() {
                   className="bg-transparent py-3 text-sm outline-none"
                   aria-label="Сложность заданий"
                 >
-                  <option value="" className="bg-[#111914]">Любая сложность</option>
-                  <option value="easy" className="bg-[#111914]">Базовый</option>
-                  <option value="medium" className="bg-[#111914]">Средний</option>
-                  <option value="hard" className="bg-[#111914]">Сложный</option>
+                  <option value="" className="bg-[#151b24]">Любая сложность</option>
+                  <option value="easy" className="bg-[#151b24]">Базовый</option>
+                  <option value="medium" className="bg-[#151b24]">Средний</option>
+                  <option value="hard" className="bg-[#151b24]">Сложный</option>
                 </select>
               </label>
             </div>
@@ -256,22 +272,29 @@ export default function SubjectPage() {
               <div className="mt-5 grid gap-3">{[1, 2, 3].map((item) => <div key={item} className="h-28 animate-pulse rounded-2xl bg-panel" />)}</div>
             ) : (
               <div className="mt-5 grid gap-3">
-                {visibleTasks.map((task, index) => (
-                  <article key={task.id} className="rounded-2xl border border-white/[0.07] bg-panel p-5 transition hover:border-lime/25 sm:p-6">
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                      <span className="rounded-full bg-lime/10 px-2.5 py-1 text-lime">Задание {index + 1}</span>
-                      <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-muted">{difficultyLabels[task.difficulty || ""] || "Без уровня"}</span>
+                {groupedTasks.map(([examNumber, group]) => (
+                  <section key={examNumber} className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                      <h3 className="text-lg font-extrabold">{examNumber === "Без номера" ? "Дополнительная практика" : `Задание №${examNumber}`}</h3>
+                      <span className="text-xs text-muted">{group.length} вариантов</span>
                     </div>
-                    <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-white/90">{task.question}</p>
-                    <div className="mt-5 flex justify-end">
-                      <Link
-                        href={`/practice/${task.id}?subject=${encodeURIComponent(subjectCode)}&topic=${encodeURIComponent(selectedTopic || "")}`}
-                        className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-black text-ink transition hover:bg-[#d5ff86]"
-                      >
-                        Решить задание <ArrowRight size={15} />
-                      </Link>
+                    <div className="grid gap-3">
+                      {group.map((task, index) => (
+                        <article key={task.id} className="rounded-2xl border border-white/[0.07] bg-panel p-5 transition hover:border-white/25 sm:p-6">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                            <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-white/80">{task.variant_label || `Вариант ${index + 1}`}</span>
+                            <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-muted">{difficultyLabels[task.difficulty || ""] || "Без уровня"}</span>
+                          </div>
+                          <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-white/90">{task.question}</p>
+                          <div className="mt-5 flex justify-end">
+                            <Link href={`/practice/${task.id}?subject=${encodeURIComponent(subjectCode)}&topic=${encodeURIComponent(selectedTopic || "")}`} className="inline-flex items-center gap-2 rounded-xl bg-lime px-4 py-2.5 text-xs font-black text-ink transition hover:bg-white">
+                              Решить <ArrowRight size={15} />
+                            </Link>
+                          </div>
+                        </article>
+                      ))}
                     </div>
-                  </article>
+                  </section>
                 ))}
                 {!visibleTasks.length && (
                   <div className="rounded-2xl border border-white/[0.07] bg-panel p-7 text-center text-sm text-muted">
