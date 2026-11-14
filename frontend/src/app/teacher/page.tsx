@@ -95,6 +95,7 @@ export default function TeacherPage() {
   }
   async function createVariant() {
     if (!activeClass || selected.length === 0) { setError("Выбери класс и хотя бы одно задание."); return; }
+    if (selected.length > 100) { setError("В одном варианте может быть не более 100 заданий. Уменьши выбор."); return; }
     if (name.trim().length < 2) { setError("Название должно содержать не менее двух символов."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
