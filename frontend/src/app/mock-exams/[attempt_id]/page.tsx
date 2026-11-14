@@ -101,6 +101,11 @@ export default function MockExamPage() {
 
   async function submitExam() {
     if (!attempt) return;
+    const value = currentAnswer();
+    if (value !== "" && !(Array.isArray(value) && value.length === 0)) {
+      const saved = await saveCurrent();
+      if (!saved) return;
+    }
     setBusy(true); setError("");
     try {
       const data = await apiRequest<{ attempt: Attempt }>(`/api/mock-exams/attempts/${attempt.id}/submit`, { method: "POST" }, token());
