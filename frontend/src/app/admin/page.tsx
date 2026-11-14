@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
-  Activity, AlertTriangle, ArrowLeft, BookOpen, CheckCircle2, ChevronRight,
-  CircleUserRound, ClipboardList, GraduationCap, LayoutDashboard, LogOut,
+  Activity, AlertTriangle, ArrowLeft, BookOpen, CheckCircle2, ClipboardList,
+  GraduationCap, LayoutDashboard, LogOut,
   Plus, RefreshCw, ShieldCheck, Users, X,
 } from "lucide-react";
 import { apiRequest, ApiUser } from "@/lib/api";
@@ -124,7 +124,7 @@ export default function AdminPage() {
     finally { setBusy(false); }
   }
 
-  async function createTask(event: React.FormEvent<HTMLFormElement>) {
+  async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
       const response = await apiRequest<{ message: string }>("/api/admin/tasks", {
