@@ -17,6 +17,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from main import app
 from auth_routes import create_session, get_connection, hash_password
 from checking_routes import evaluate_answer
+from tasks_routes import task_to_public
+from scripts.seed_exam_bank import seed_exam_bank
 
 
 DB_PATH = PROJECT_ROOT / "users.db"
@@ -778,3 +780,46 @@ def test_registration_does_not_require_email():
             json={"login": username, "password": "StrongPass123"},
         )
         assert logged_in.status_code == 200, logged_in.text
+
+
+
+def test_authored_russian_bank_seed_is_repeatable_and_answers_are_private(tmp_path):
+    database = tmp_path / "exam-bank-test.db"
+
+    assert seed_exam_bank(database) == 6
+    assert seed_exam_bank(database) == 6
+
+    connection = sqlite3.connect(database)
+    connection.row_factory = sqlite3.Row
+    try:
+        rows = connection.execute(
+            """
+            SELECT * FROM tasks
+            WHERE subject_code = 'russian'
+            ORDER BY exam_number, variant_label
+            """
+        ).fetchall()
+        assert len(rows) == 6
+        assert {row["exam_number"] for row in rows} == {1, 2, 3}
+
+        for row in rows:
+            public_task = task_to_public(row)
+            assert "answer" not in public_task
+            assert "checking_config" not in public_task
+
+            config = json.loads(row["checking_config_json"])
+            if row["task_type"] == "text":
+                submitted = config["correct_answer"]
+            elif row["task_type"] == "single_choice":
+                submitted = config["correct_option_id"]
+            elif row["task_type"] == "multiple_choice":
+                submitted = config["correct_option_ids"]
+            else:
+                raise AssertionError(f"Unexpected task type: {row['task_type']}")
+
+            result = evaluate_answer(row, submitted)
+            assert result["status"] == "checked"
+            assert result["is_correct"] == 1
+            assert result["score"] == result["max_score"] == 1.0
+    finally:
+        connection.close()
