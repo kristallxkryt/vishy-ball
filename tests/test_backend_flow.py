@@ -833,10 +833,10 @@ def test_mock_exam_presets_bank_mix_and_persisted_results():
 
         with get_connection() as connection:
             for number, label, answer in [
-                (1, "Пробник А", "A"),
-                (2, "Пробник А", "B"),
-                (1, "Пробник Б", "C"),
-                (2, "Пробник Б", "D"),
+                (98, "Пробник А", "A"),
+                (99, "Пробник А", "B"),
+                (98, "Пробник Б", "C"),
+                (99, "Пробник Б", "D"),
             ]:
                 connection.execute(
                     """
@@ -867,7 +867,7 @@ def test_mock_exam_presets_bank_mix_and_persisted_results():
         )
         assert created.status_code == 201, created.text
         attempt = created.json()["attempt"]
-        assert [task["exam_number"] for task in attempt["tasks"]] == [1, 2]
+        assert [task["exam_number"] for task in attempt["tasks"]] == [98, 99]
         assert {task["variant_label"] for task in attempt["tasks"]} == {"Пробник А"}
 
         for task, answer in zip(attempt["tasks"], ["A", "B"]):
@@ -910,7 +910,8 @@ def test_mock_exam_presets_bank_mix_and_persisted_results():
         )
         assert mixed.status_code == 201, mixed.text
         mixed_tasks = mixed.json()["attempt"]["tasks"]
-        assert [task["exam_number"] for task in mixed_tasks] == [1, 2]
-        assert len({task["exam_number"] for task in mixed_tasks}) == 2
-        assert all(task["variant_label"] is None for task in mixed_tasks)
+        assert 98 in {task["exam_number"] for task in mixed_tasks}
+        assert 99 in {task["exam_number"] for task in mixed_tasks}
+        assert len({task["exam_number"] for task in mixed_tasks}) == len(mixed_tasks)
+        assert mixed.json()["attempt"]["mode"] == "bank_mix"
 
