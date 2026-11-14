@@ -15,11 +15,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from main import app
+import auth_routes
 from auth_routes import create_session, get_connection, hash_password
 from checking_routes import evaluate_answer
 
 
 DB_PATH = PROJECT_ROOT / "users.db"
+
+# Tests use a deterministic in-memory mail sink; no real SMTP connection is made.
+SENT_VERIFICATION_CODES = []
+auth_routes._send_email_code = lambda recipient, subject, purpose_text, code: SENT_VERIFICATION_CODES.append(
+    {"recipient": recipient, "code": code}
+)
 
 
 def register_and_login(client: TestClient, role: str):
@@ -32,7 +39,14 @@ def register_and_login(client: TestClient, role: str):
     }
 
     registered = client.post("/api/auth/register", json=payload)
-    assert registered.status_code == 201, registered.text
+    assert registered.status_code == 202, registered.text
+    sent = SENT_VERIFICATION_CODES[-1]
+    assert sent["recipient"] == payload["email"]
+    verified = client.post(
+        "/api/auth/register/verify",
+        json={"email": payload["email"], "code": sent["code"]},
+    )
+    assert verified.status_code == 201, verified.text
 
     logged_in = client.post(
         "/api/auth/login",
