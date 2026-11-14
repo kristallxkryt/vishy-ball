@@ -4,6 +4,16 @@ import Link from "next/link";
 import {
   ArrowDownRight,
   ArrowRight,
+  Atom,
+  Calculator,
+  Code2,
+  Dna,
+  FlaskConical,
+  Globe,
+  Landmark,
+  Languages,
+  Scale,
+  Sigma,
   BookOpen,
   Brain,
   ChartNoAxesCombined,
@@ -40,13 +50,23 @@ const features = [
 ];
 
 const subjects = [
-  ["РУ", "Русский язык", "russian"],
-  ["МП", "Математика · профиль", "math-profile"],
-  ["ИН", "Информатика", "informatics"],
-  ["ФИ", "Физика", "physics"],
-  ["ХИ", "Химия", "chemistry"],
-  ["ОБ", "Обществознание", "social-studies"],
-];
+  ["РУ", "Русский язык", BookOpen],
+  ["МП", "Математика · профиль", Sigma],
+  ["МБ", "Математика · база", Calculator],
+  ["ИН", "Информатика", Code2],
+  ["ФИ", "Физика", Atom],
+  ["ХИ", "Химия", FlaskConical],
+  ["БИ", "Биология", Dna],
+  ["ИСТ", "История", Landmark],
+  ["ОБ", "Обществознание", Scale],
+  ["ЛИ", "Литература", BookOpen],
+  ["ГЕО", "География", Globe],
+  ["АН", "Английский язык", Languages],
+  ["НЕМ", "Немецкий язык", Languages],
+  ["ФР", "Французский язык", Languages],
+  ["ИС", "Испанский язык", Languages],
+  ["КИТ", "Китайский язык", Languages],
+] as const;
 
 export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -209,15 +229,15 @@ export default function HomePage() {
             <div><p className="eyebrow">Выбирай направление</p><h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Твой предмет — твой маршрут</h2></div>
             <Link href="/auth?mode=register" className="text-sm font-bold text-lime transition hover:text-white">Начать подготовку <ArrowRight className="ml-1 inline" size={15} /></Link>
           </div>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {subjects.map(([code, name]) => (
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+            {subjects.map(([code, name, SubjectIcon]) => (
               <div key={code} className="rounded-2xl border border-white/[0.07] bg-panel p-4 transition hover:border-lime/30 hover:bg-surface-soft">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.05] text-xs font-black text-lime">{code}</span>
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.05] text-lime"><SubjectIcon size={19} strokeWidth={1.9} aria-label={name} /></span>
                 <p className="mt-5 min-h-10 text-sm font-bold leading-5">{name}</p>
               </div>
             ))}
           </div>
-          <p className="mt-5 text-xs text-muted">Список предметов на главной — демонстрация. Полный каталог загружается из API после входа.</p>
+          <p className="mt-5 text-xs text-muted">Каталог предметов постепенно наполняется заданиями и вариантами ЕГЭ.</p>
         </div>
       </section>
 
