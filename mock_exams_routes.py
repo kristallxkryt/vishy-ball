@@ -186,6 +186,7 @@ def get_mock_exam_catalog(subject_code: str, current_user=Depends(get_current_us
               AND exam_number IS NOT NULL AND variant_label IS NOT NULL
               AND TRIM(variant_label) != ''
             GROUP BY variant_label
+            HAVING COUNT(DISTINCT exam_number) >= 2
             ORDER BY variant_label
         """, (code,)).fetchall()
         numbers = conn.execute("""
