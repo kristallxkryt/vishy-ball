@@ -67,20 +67,27 @@ function AuthForm() {
         </Link>
         <div className="mt-9 text-center">
           <p className="eyebrow">{mode === "login" ? "С возвращением" : "Первый шаг к цели"}</p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : "Создать аккаунт"}</h1>
+          <h1 className="mt-3 text-3xl font-black tracking-tight">{mode === "login" ? "Войти в аккаунт" : verificationStep ? "Подтвердить почту" : "Отправить код"}</h1>
           <p className="mt-3 text-sm leading-6 text-muted">{mode === "login" ? "Продолжай подготовку с того места, где остановился." : "Выбери роль и присоединяйся к платформе."}</p>
         </div>
         <div className="mt-8 grid grid-cols-2 rounded-xl border border-white/[0.08] bg-black/20 p-1">
-          <button type="button" onClick={() => { setMode("login"); setError(""); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "login" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Вход</button>
-          <button type="button" onClick={() => { setMode("register"); setError(""); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "register" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Регистрация</button>
+          <button type="button" onClick={() => { setMode("login"); setError(""); setVerificationStep(false); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "login" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Вход</button>
+          <button type="button" onClick={() => { setMode("register"); setError(""); setVerificationStep(false); }} className={`rounded-lg py-2.5 text-sm font-bold transition ${mode === "register" ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}>Регистрация</button>
         </div>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {mode === "register" && (
+          {mode === "register" && !verificationStep && (
             <>
               <label className="block text-xs font-bold text-white/75">Имя пользователя<input required minLength={3} maxLength={32} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Например, student_01" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>
               <label className="block text-xs font-bold text-white/75">Электронная почта<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>
               <div className="block text-xs font-bold text-white/75">Тип аккаунта<div className="mt-2 grid grid-cols-2 gap-2">{(["student", "teacher"] as const).map((value) => <button key={value} type="button" onClick={() => setRole(value)} className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${role === value ? "border-lime/50 bg-lime/10 text-lime" : "border-white/10 bg-black/20 text-muted hover:text-white"}`}>{value === "student" ? "Ученик" : "Учитель"}</button>)}</div></div>
             </>
+          )}
+          {mode === "register" && verificationStep && (
+            <div className="space-y-3">
+              <p className="rounded-xl border border-lime/20 bg-lime/[0.06] px-4 py-3 text-sm leading-6 text-muted">Мы отправили шестизначный код на <span className="font-bold text-white">{email}</span>. Введи его, чтобы подтвердить почту и создать аккаунт.</p>
+              <label className="block text-xs font-bold text-white/75">Код из письма<input required inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} pattern="[0-9]{6}" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-center text-xl font-black tracking-[.4em] outline-none focus:border-lime/60" /></label>
+              <button type="button" onClick={() => { setVerificationStep(false); setVerificationCode(""); setError(""); }} className="text-xs font-semibold text-muted transition hover:text-white">Изменить данные регистрации</button>
+            </div>
           )}
           {mode === "login" && <label className="block text-xs font-bold text-white/75">Логин или почта<input required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Логин или email" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /></label>}
           <label className="block text-xs font-bold text-white/75">Пароль<div className="relative mt-2"><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Не менее 8 символов" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 pr-12 text-sm outline-none transition placeholder:text-muted/60 focus:border-lime/60" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></label>
