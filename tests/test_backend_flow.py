@@ -58,7 +58,7 @@ def register_and_login(client: TestClient, role: str):
     assert logged_in.status_code == 200, logged_in.text
 
     return {
-        "id": registered.json()["user"]["id"],
+        "id": verified.json()["user"]["id"],
         "username": payload["username"],
         "headers": {
             "Authorization": f"Bearer {logged_in.json()['access_token']}"
